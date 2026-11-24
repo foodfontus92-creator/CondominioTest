@@ -1,0 +1,65 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: accesolibre-backend
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/accesolibre}
+    username: ${SPRING_DATASOURCE_USERNAME:accesolibre}
+    password: ${SPRING_DATASOURCE_PASSWORD:accesolibre_local_dev}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 10000
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: ${SPRING_FLYWAY_ENABLED:true}
+    locations: classpath:db/migration
+    baseline-on-migrate: false
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when_authorized
+
+accesolibre:
+  security:
+    jwt-secret: ${ACCESOLIBRE_SECURITY_JWT_SECRET:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08}
+    access-token-ttl-seconds: ${ACCESOLIBRE_SECURITY_ACCESS_TTL_SECONDS:900}
+    refresh-token-ttl-seconds: ${ACCESOLIBRE_SECURITY_REFRESH_TTL_SECONDS:2592000}
+    cors-allowed-origins: ${ACCESOLIBRE_SECURITY_CORS_ORIGINS:*}
+  mqtt:
+    enabled: ${ACCESOLIBRE_MQTT_ENABLED:true}
+    broker-url: ${ACCESOLIBRE_MQTT_BROKER_URL:tcp://localhost:1883}
+    username: ${ACCESOLIBRE_MQTT_USERNAME:accesolibre_backend}
+    password: ${ACCESOLIBRE_MQTT_PASSWORD:mqtt_backend_local_dev}
+    client-id: ${ACCESOLIBRE_MQTT_CLIENT_ID:accesolibre-backend}
+    qos: 1
+    connection-timeout-seconds: 10
+    keep-alive-interval-seconds: 30
+  qr:
+    max-payload-length: 119
+    hmac-truncated-bytes: 12
+    default-pass-ttl-hours: 24
+    clock-skew-seconds: 60
+
+logging:
+  level:
+    com.accesolibre: INFO
+    org.springframework.security: WARN

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- 100% LAN deployment: the local server speaks plain HTTP/WS on a private IP. -->
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>
