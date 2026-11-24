@@ -5,10 +5,11 @@ import com.accesolibre.domain.enums.AccessResult;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
 import java.util.UUID;
 
-public interface AccessLogRepository extends JpaRepository<AccessLog, UUID> {
+public interface AccessLogRepository extends JpaRepository<AccessLog, UUID>, JpaSpecificationExecutor<AccessLog> {
 
     Page<AccessLog> findAllByCondominiumIdOrderByOccurredAtDesc(UUID condominiumId, Pageable pageable);
 

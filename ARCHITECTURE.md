@@ -327,7 +327,7 @@ Sensor magnético (Reed Switch): contacto cerrado = portón cerrado. Si permanec
   - `GET /api/v1/access-passes/unit-secret` — Entrega al residente autenticado su `unit_secret` derivado para emisión de QR offline.
   - `/api/v1/condos/{condoId}/access-passes` — Generación, registro offline (`/register`), validación HMAC (`/validate`), consulta y revocación (`/{passId}/revoke`) de pases QR compactos offline.
   - `POST /api/v1/access/open` — Apertura remota con verificación de bloqueo (usuario/unidad), validación GPS por geofencing (Haversine contra el radio del condominio), publicación MQTT en `condo/{condoId}/device/{deviceId}/command` y registro en `access_logs`.
-  - `/api/v1/condos/{condoId}/access-logs` — Auditoría paginada y filtrable de accesos otorgados/denegados.
+  - `/api/v1/condos/{condoId}/access-logs` — Auditoría paginada (más reciente primero). Filtros opcionales combinables: `unitId`, `deviceId`, `result`, `method` (repetible o separado por comas: `REMOTE_APP`, `QR_ONLINE`, `QR_OFFLINE`, `INTERCOM_UNLOCK`, `ADMIN_OVERRIDE`, `MANUAL_EXIT`), `from` (inclusive) y `to` (exclusivo) como instantes ISO-8601 UTC. Los residentes siempre quedan limitados a su propia unidad.
   - `/api/v1/public/intercom/door/{publicQrToken}` y `POST /api/v1/public/intercom/ring` — Flujo público para visitantes escaneando el QR físico de la puerta.
   - `/api/v1/condos/{condoId}/intercom-calls` — Historial y acciones del residente/admin (`answer`, `unlock`, `reject`, `end`).
 - **WebSocket STOMP Local (`/ws/intercom`):**
@@ -335,6 +335,7 @@ Sensor magnético (Reed Switch): contacto cerrado = portón cerrado. Si permanec
     - `/topic/condo/{condoId}/unit/{unitId}/intercom` (alertas de llamada en tiempo real para residentes de la unidad)
     - `/topic/condo/{condoId}/intercom` (monitor de llamadas para administradores del condominio)
   - Canal público de estado de llamada del visitante: `/topic/public/intercom/call/{callId}`.
+  - Feed en vivo de dispositivos (solo `CONDO_ADMIN` del condominio y `SUPER_ADMIN`, usado por el Web Admin): `/topic/condo/{condoId}/devices`. Mensaje: `{"eventType":"HEARTBEAT|DEVICE_OFFLINE|ACCESS_EVENT|GATE_OPEN_TIMEOUT|GATE_CLOSED","condominiumId","deviceId","occurredAt","payload":{...telemetría original...}}`.
   - Destinos de aplicación: `/app/intercom/{callId}/decision` y `/app/intercom/{callId}/signal`.
 - **Healthcheck Backend:** `GET /actuator/health`.
 

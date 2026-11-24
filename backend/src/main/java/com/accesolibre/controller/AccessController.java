@@ -1,5 +1,6 @@
 package com.accesolibre.controller;
 
+import com.accesolibre.domain.enums.AccessMethod;
 import com.accesolibre.domain.enums.AccessResult;
 import com.accesolibre.dto.access.AccessLogResponse;
 import com.accesolibre.dto.access.RemoteOpenRequest;
@@ -9,6 +10,7 @@ import com.accesolibre.service.AccessControlService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -18,6 +20,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -35,14 +39,23 @@ public class AccessController {
         return ResponseEntity.ok(accessControlService.remoteOpen(request));
     }
 
+    /**
+     * Audit trail. All filters are optional and combinable:
+     * deviceId, unitId, result, method (repeatable / comma separated), from (inclusive), to (exclusive).
+     * from/to are ISO-8601 instants (e.g. 2026-11-01T00:00:00Z).
+     */
     @GetMapping("/condos/{condoId}/access-logs")
     public ResponseEntity<PageResponse<AccessLogResponse>> listLogs(
             @PathVariable UUID condoId,
             @RequestParam(required = false) UUID deviceId,
             @RequestParam(required = false) UUID unitId,
             @RequestParam(required = false) AccessResult result,
+            @RequestParam(required = false) List<AccessMethod> method,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant to,
             @PageableDefault(size = 25) Pageable pageable
     ) {
-        return ResponseEntity.ok(accessControlService.listAccessLogs(condoId, deviceId, unitId, result, pageable));
+        return ResponseEntity.ok(accessControlService.listAccessLogs(
+                condoId, deviceId, unitId, result, method, from, to, pageable));
     }
 }

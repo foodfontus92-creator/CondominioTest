@@ -1,3 +1,4 @@
+com\accesolibre\mqtt\MqttTelemetryListener$3.class
 com\accesolibre\repository\RefreshTokenRepository.class
 com\accesolibre\domain\enums\UserRole.class
 com\accesolibre\dto\user\UserResponse.class

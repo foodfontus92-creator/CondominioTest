@@ -24,6 +24,8 @@ public class StompJwtChannelInterceptor implements ChannelInterceptor {
             Pattern.compile("^/topic/condo/([0-9a-fA-F\\-]{36})/unit/([0-9a-fA-F\\-]{36})/intercom$");
     private static final Pattern CONDO_INTERCOM_TOPIC =
             Pattern.compile("^/topic/condo/([0-9a-fA-F\\-]{36})/intercom$");
+    private static final Pattern CONDO_DEVICES_TOPIC =
+            Pattern.compile("^/topic/condo/([0-9a-fA-F\\-]{36})/devices$");
 
     private final JwtService jwtService;
 
@@ -105,6 +107,18 @@ public class StompJwtChannelInterceptor implements ChannelInterceptor {
                 return;
             }
             throw new MessagingException("Administrator role required for condo intercom feed");
+        }
+
+        Matcher devicesMatcher = CONDO_DEVICES_TOPIC.matcher(destination);
+        if (devicesMatcher.matches()) {
+            UUID condoId = UUID.fromString(devicesMatcher.group(1));
+            if (user.isSuperAdmin()) {
+                return;
+            }
+            if (user.isCondoAdmin() && condoId.equals(user.condominiumId())) {
+                return;
+            }
+            throw new MessagingException("Administrator role required for live device feed");
         }
 
         throw new MessagingException("Unauthorized STOMP destination: " + destination);

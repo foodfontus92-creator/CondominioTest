@@ -18,6 +18,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,6 +33,8 @@ import java.util.UUID;
 public class MqttTelemetryListener {
 
     private static final Logger log = LoggerFactory.getLogger(MqttTelemetryListener.class);
+    private static final java.util.Set<String> LIVE_EVENTS = java.util.Set.of(
+            "HEARTBEAT", "DEVICE_OFFLINE", "ACCESS_EVENT", "GATE_OPEN_TIMEOUT", "GATE_CLOSED");
 
     private final ObjectMapper objectMapper;
     private final IotDeviceRepository deviceRepository;
@@ -39,6 +42,7 @@ public class MqttTelemetryListener {
     private final AccessLogRepository accessLogRepository;
     private final CompactQrCryptoService qrCryptoService;
     private final IntercomService intercomService;
+    private final SimpMessagingTemplate messagingTemplate;
 
     public MqttTelemetryListener(
             ObjectMapper objectMapper,
@@ -46,7 +50,8 @@ public class MqttTelemetryListener {
             AccessPassRepository accessPassRepository,
             AccessLogRepository accessLogRepository,
             CompactQrCryptoService qrCryptoService,
-            IntercomService intercomService
+            IntercomService intercomService,
+            SimpMessagingTemplate messagingTemplate
     ) {
         this.objectMapper = objectMapper;
         this.deviceRepository = deviceRepository;
@@ -54,6 +59,7 @@ public class MqttTelemetryListener {
         this.accessLogRepository = accessLogRepository;
         this.qrCryptoService = qrCryptoService;
         this.intercomService = intercomService;
+        this.messagingTemplate = messagingTemplate;
     }
 
     @EventListener
@@ -76,9 +82,29 @@ public class MqttTelemetryListener {
                         handleGateAlert(event.condominiumId(), event.deviceId(), eventType, payload, occurredAt);
                 default -> log.debug("Unhandled MQTT telemetry event '{}' on topic {}", eventType, event.topic());
             }
+            broadcastDeviceEvent(event.condominiumId(), event.deviceId(), eventType, occurredAt, payload);
         } catch (Exception ex) {
             log.warn("Failed to process MQTT telemetry on topic {}: {}", event.topic(), ex.getMessage());
         }
+    }
+
+    /**
+     * Pushes live device events to the web admin over STOMP:
+     * /topic/condo/{condoId}/devices (administrators only, enforced in StompJwtChannelInterceptor).
+     */
+    private void broadcastDeviceEvent(UUID condoId, UUID deviceId, String eventType, Instant occurredAt, JsonNode payload) {
+        if (!LIVE_EVENTS.contains(eventType)) {
+            return;
+        }
+        Map<String, Object> message = new java.util.LinkedHashMap<>();
+        message.put("eventType", eventType);
+        message.put("condominiumId", condoId.toString());
+        message.put("deviceId", deviceId.toString());
+        message.put("occurredAt", occurredAt.toString());
+        message.put("payload", payload.isObject()
+                ? objectMapper.convertValue(payload, new TypeReference<Map<String, Object>>() {})
+                : Map.of());
+        messagingTemplate.convertAndSend("/topic/condo/" + condoId + "/devices", message);
     }
 
     private void handleHeartbeat(UUID condoId, UUID deviceId, JsonNode payload, Instant occurredAt) {
@@ -103,7 +129,16 @@ public class MqttTelemetryListener {
                 device.setHmacKeyVersionSynced(payload.get("hmac_key_version_synced").asInt());
             }
             device.setLastSeenAt(occurredAt);
-            device.setLastTelemetry(objectMapper.convertValue(payload, new TypeReference<Map<String, Object>>() {}));
+            // Merge instead of replace so gate alert markers (set by GATE_* events) survive heartbeats.
+            Map<String, Object> snapshot = new java.util.LinkedHashMap<>();
+            if (device.getLastTelemetry() != null) {
+                Object lastGateEvent = device.getLastTelemetry().get("last_gate_event");
+                Object lastGateEventAt = device.getLastTelemetry().get("last_gate_event_at");
+                if (lastGateEvent != null) snapshot.put("last_gate_event", lastGateEvent);
+                if (lastGateEventAt != null) snapshot.put("last_gate_event_at", lastGateEventAt);
+            }
+            snapshot.putAll(objectMapper.convertValue(payload, new TypeReference<Map<String, Object>>() {}));
+            device.setLastTelemetry(snapshot);
             deviceRepository.save(device);
         });
     }

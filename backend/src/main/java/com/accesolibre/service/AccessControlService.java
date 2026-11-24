@@ -23,12 +23,17 @@ import com.accesolibre.repository.UnitRepository;
 import com.accesolibre.repository.UserRepository;
 import com.accesolibre.security.AuthenticatedUser;
 import com.accesolibre.security.TenantAccessGuard;
+import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -232,27 +237,52 @@ public class AccessControlService {
             UUID deviceId,
             UUID unitId,
             AccessResult result,
+            List<AccessMethod> methods,
+            Instant from,
+            Instant to,
             Pageable pageable
     ) {
         AuthenticatedUser caller = tenantAccessGuard.requireCondoAccess(condoId);
-        Page<AccessLog> page;
-
+        final UUID effectiveUnitId;
         if (caller.isResident()) {
             if (caller.unitId() == null) {
                 return new PageResponse<>(List.of(), pageable.getPageNumber(), pageable.getPageSize(), 0, 0, true);
             }
-            page = accessLogRepository.findAllByCondominiumIdAndUnitIdOrderByOccurredAtDesc(
-                    condoId, caller.unitId(), pageable);
-        } else if (unitId != null) {
-            page = accessLogRepository.findAllByCondominiumIdAndUnitIdOrderByOccurredAtDesc(condoId, unitId, pageable);
-        } else if (deviceId != null) {
-            page = accessLogRepository.findAllByCondominiumIdAndDeviceIdOrderByOccurredAtDesc(condoId, deviceId, pageable);
-        } else if (result != null) {
-            page = accessLogRepository.findAllByCondominiumIdAndResultOrderByOccurredAtDesc(condoId, result, pageable);
+            effectiveUnitId = caller.unitId();   // residents only ever see their own unit
         } else {
-            page = accessLogRepository.findAllByCondominiumIdOrderByOccurredAtDesc(condoId, pageable);
+            effectiveUnitId = unitId;
         }
 
+        Specification<AccessLog> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            predicates.add(cb.equal(root.get("condominiumId"), condoId));   // tenant isolation
+            if (effectiveUnitId != null) {
+                predicates.add(cb.equal(root.get("unitId"), effectiveUnitId));
+            }
+            if (deviceId != null) {
+                predicates.add(cb.equal(root.get("deviceId"), deviceId));
+            }
+            if (result != null) {
+                predicates.add(cb.equal(root.get("result"), result));
+            }
+            if (methods != null && !methods.isEmpty()) {
+                predicates.add(root.get("accessMethod").in(methods));
+            }
+            if (from != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("occurredAt"), from));
+            }
+            if (to != null) {
+                predicates.add(cb.lessThan(root.get("occurredAt"), to));
+            }
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+        Pageable sorted = PageRequest.of(
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                Sort.by(Sort.Direction.DESC, "occurredAt")
+        );
+        Page<AccessLog> page = accessLogRepository.findAll(spec, sorted);
         return PageResponse.from(page.map(AccessLogResponse::from));
     }
 
