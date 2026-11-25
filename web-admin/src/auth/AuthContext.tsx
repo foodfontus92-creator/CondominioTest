@@ -1,14 +1,15 @@
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
-import { ApiError, AUTH_LOGOUT_EVENT } from '../api/client';
+import { API_BASE_URL, ApiError, AUTH_LOGOUT_EVENT } from '../api/client';
 import { authApi } from '../api/endpoints';
-import type { UserProfile } from '../api/types';
+import type { ActivateAdminBody, AuthResponse, UserProfile } from '../api/types';
 import { tokenStore } from './tokenStore';
 
 interface AuthContextValue {
   user: UserProfile | null;
   login: (condominiumCode: string, email: string, password: string) => Promise<void>;
+  activateAdmin: (body: ActivateAdminBody) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -27,13 +28,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener(AUTH_LOGOUT_EVENT, onForcedLogout);
   }, [queryClient]);
 
-  const login = useCallback(async (condominiumCode: string, email: string, password: string) => {
-    const auth = await authApi.login(condominiumCode.trim(), email.trim(), password);
+  const finishAdminAuth = useCallback(async (auth: AuthResponse) => {
     if (auth.user.role === 'RESIDENT') {
       // Residents use the mobile app; revoke the session we just created (token not stored yet).
       await axios
         .post(
-          '/api/v1/auth/logout',
+          `${API_BASE_URL}/auth/logout`,
           { refreshToken: auth.refreshToken },
           { headers: { Authorization: `Bearer ${auth.accessToken}` } },
         )
@@ -43,6 +43,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     tokenStore.save(auth);
     setUser(auth.user);
   }, []);
+
+  const login = useCallback(
+    async (condominiumCode: string, email: string, password: string) => {
+      const auth = await authApi.login(condominiumCode.trim(), email.trim(), password);
+      await finishAdminAuth(auth);
+    },
+    [finishAdminAuth],
+  );
+
+  const activateAdmin = useCallback(
+    async (body: ActivateAdminBody) => {
+      const auth = await authApi.activateAdmin(body);
+      await finishAdminAuth(auth);
+    },
+    [finishAdminAuth],
+  );
 
   const logout = useCallback(async () => {
     const refresh = tokenStore.refresh();
@@ -54,7 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     queryClient.clear();
   }, [queryClient]);
 
-  const value = useMemo(() => ({ user, login, logout }), [user, login, logout]);
+  const value = useMemo(() => ({ user, login, activateAdmin, logout }), [user, login, activateAdmin, logout]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

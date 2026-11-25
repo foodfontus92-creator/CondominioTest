@@ -3,6 +3,8 @@ package com.accesolibre.app.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.accesolibre.app.BuildConfig
+import com.accesolibre.app.data.remote.LicenseSuspendedAppException
 import com.accesolibre.app.data.remote.StompConnectionState
 import com.accesolibre.app.data.remote.StompIntercomClient
 import com.accesolibre.app.domain.model.AccessLogItem
@@ -42,8 +44,9 @@ data class ServerConfigUiState(
 class ServerConfigViewModel(
     private val settings: SettingsRepository,
 ) : ViewModel() {
+    private val defaultUrl = BuildConfig.DEFAULT_API_BASE_URL.trimEnd('/')
     private val _state = MutableStateFlow(
-        ServerConfigUiState(urlInput = settings.serverUrl.value ?: "http://192.168.1.100:8080")
+        ServerConfigUiState(urlInput = settings.serverUrl.value ?: defaultUrl)
     )
     val state: StateFlow<ServerConfigUiState> = _state.asStateFlow()
 
@@ -54,7 +57,7 @@ class ServerConfigViewModel(
     fun testConnection() {
         val normalized = settings.normalize(_state.value.urlInput)
         if (normalized == null) {
-            _state.update { it.copy(errorMessage = "URL inválida. Ejemplo: http://192.168.1.100:8080") }
+            _state.update { it.copy(errorMessage = "URL inválida. Ejemplo: $defaultUrl") }
             return
         }
         viewModelScope.launch {
@@ -73,7 +76,7 @@ class ServerConfigViewModel(
                     _state.update {
                         it.copy(
                             testing = false,
-                            errorMessage = err.message ?: "No se pudo conectar al servidor local",
+                            errorMessage = err.message ?: "No se pudo conectar al servidor",
                         )
                     }
                 }
@@ -83,7 +86,7 @@ class ServerConfigViewModel(
     fun saveAndContinue(onSaved: () -> Unit) {
         val normalized = settings.normalize(_state.value.urlInput)
         if (normalized == null) {
-            _state.update { it.copy(errorMessage = "URL inválida. Ejemplo: http://192.168.1.100:8080") }
+            _state.update { it.copy(errorMessage = "URL inválida. Ejemplo: $defaultUrl") }
             return
         }
         settings.save(normalized)
@@ -209,6 +212,7 @@ data class HomeUiState(
     val openingKind: DeviceKind? = null,
     val feedbackSuccess: String? = null,
     val feedbackError: String? = null,
+    val licenseSuspended: Boolean = false,
     val blockName: String? = null,
     val unitNumber: String? = null,
     val communityType: String = "CONDOMINIUM",
@@ -244,7 +248,11 @@ class HomeViewModel(
                 )
             }
             if (authRepository.unitSecret() == null) {
-                authRepository.refreshUnitSecret()
+                authRepository.refreshUnitSecret().onFailure { err ->
+                    if (err is LicenseSuspendedAppException) {
+                        _state.update { it.copy(licenseSuspended = true, feedbackError = err.message) }
+                    }
+                }
             }
             syncPendingPassesUseCase()
             accessRepository.devices()
@@ -263,6 +271,7 @@ class HomeViewModel(
                     _state.update {
                         it.copy(
                             loadingDevices = false,
+                            licenseSuspended = err is LicenseSuspendedAppException,
                             feedbackError = err.message ?: "Sin conexión al servidor local",
                         )
                     }
@@ -288,7 +297,7 @@ class HomeViewModel(
 
     fun openDevice(device: Device, kind: DeviceKind) {
         viewModelScope.launch {
-            _state.update { it.copy(openingKind = kind, feedbackSuccess = null, feedbackError = null) }
+            _state.update { it.copy(openingKind = kind, feedbackSuccess = null, feedbackError = null, licenseSuspended = false) }
             openAccessUseCase(device.id)
                 .onSuccess { outcome ->
                     val dist = "%.0f".format(outcome.distanceMeters)
@@ -296,6 +305,7 @@ class HomeViewModel(
                     _state.update {
                         it.copy(
                             openingKind = null,
+                            licenseSuspended = false,
                             feedbackSuccess = "${outcome.deviceName} abierto (${dist} m ${labels.ofCommunity})",
                         )
                     }
@@ -304,6 +314,7 @@ class HomeViewModel(
                     _state.update {
                         it.copy(
                             openingKind = null,
+                            licenseSuspended = err is LicenseSuspendedAppException,
                             feedbackError = err.message ?: "No se pudo abrir el acceso",
                         )
                     }
@@ -311,7 +322,7 @@ class HomeViewModel(
         }
     }
 
-    fun clearFeedback() = _state.update { it.copy(feedbackSuccess = null, feedbackError = null) }
+    fun clearFeedback() = _state.update { it.copy(feedbackSuccess = null, feedbackError = null, licenseSuspended = false) }
 }
 
 // ---- 4. Offline QR Generator ViewModel -------------------------------------
@@ -353,16 +364,18 @@ class QrGeneratorViewModel(
                 maxUses = s.maxUses,
                 expiresAt = expiresAt,
             ).onSuccess { created ->
+                val licenseMsg = created.syncError?.takeIf { it.contains("suspendido por licencia", ignoreCase = true) }
                 _state.update {
                     it.copy(
                         generating = false,
                         visitorName = "",
                         selectedPass = created,
                         hasUnitSecret = true,
-                        infoMessage = if (created.synced) {
-                            "QR generado offline y registrado en el servidor."
-                        } else {
-                            "QR generado 100% offline. Se sincronizará cuando haya red local."
+                        errorMessage = licenseMsg,
+                        infoMessage = when {
+                            licenseMsg != null -> null
+                            created.synced -> "QR generado offline y registrado en el servidor."
+                            else -> "QR generado 100% offline. Se sincronizará cuando haya red local."
                         },
                     )
                 }

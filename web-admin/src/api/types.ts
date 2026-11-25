@@ -2,6 +2,16 @@ export type UserRole = 'SUPER_ADMIN' | 'CONDO_ADMIN' | 'RESIDENT';
 
 export type CommunityType = 'CONDOMINIUM' | 'POBLACION' | 'VILLA' | 'PASAJE';
 
+export type SubscriptionStatus = 'TRIAL' | 'ACTIVE' | 'EXPIRED' | 'SUSPENDED';
+
+export interface ActivateAdminBody {
+  code: string;
+  fullName: string;
+  email: string;
+  phone?: string;
+  password: string;
+}
+
 export interface UserProfile {
   id: string;
   condominiumId: string;
@@ -36,6 +46,12 @@ export interface Condominium {
   longitude: number | null;
   geofenceRadiusMeters: number;
   active: boolean;
+  subscriptionStatus: SubscriptionStatus;
+  effectiveSubscriptionStatus: SubscriptionStatus;
+  planName: string;
+  licenseExpiresAt: string | null;
+  maxUnits: number;
+  licenseActive: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -49,6 +65,10 @@ export interface CreateCondominiumBody {
   latitude?: number;
   longitude?: number;
   geofenceRadiusMeters?: number;
+  subscriptionStatus?: SubscriptionStatus;
+  planName?: string;
+  licenseExpiresAt?: string;
+  maxUnits?: number;
 }
 
 export interface UpdateCondominiumBody {
@@ -320,4 +340,57 @@ export interface RevokeResidentsResponse {
   unitNumber: string;
   deactivatedResidents: number;
   invalidatedCodes: number;
+}
+
+export interface AdminActivationCodeResponse {
+  id: string;
+  condominiumId: string;
+  condoCode: string;
+  condoName: string;
+  communityType: CommunityType;
+  code: string;
+  expiresAt: string;
+  createdAt: string;
+}
+
+export type QuickLicenseAction = 'EXTEND_30_DAYS' | 'EXTEND_1_YEAR' | 'ACTIVATE_UNLIMITED' | 'SUSPEND';
+
+export interface UpdateCondoLicenseBody {
+  subscriptionStatus?: SubscriptionStatus;
+  planName?: string;
+  licenseExpiresAt?: string;
+  unlimitedLicense?: boolean;
+  maxUnits?: number;
+  quickAction?: QuickLicenseAction;
+}
+
+export interface SaasCondoOverviewItem {
+  id: string;
+  code: string;
+  name: string;
+  communityType: CommunityType;
+  address: string | null;
+  subscriptionStatus: SubscriptionStatus;
+  effectiveStatus: SubscriptionStatus;
+  planName: string;
+  licenseExpiresAt: string | null;
+  daysRemaining: number | null;
+  maxUnits: number;
+  unitCount: number;
+  residentCount: number;
+  adminCount: number;
+  active: boolean;
+  licenseActive: boolean;
+  createdAt: string;
+}
+
+export interface SaasOverviewResponse {
+  totalCondos: number;
+  activeCondos: number;
+  expiringSoonCondos: number;
+  expiredOrSuspendedCondos: number;
+  totalUnits: number;
+  totalResidents: number;
+  totalUsers: number;
+  condominiums: SaasCondoOverviewItem[];
 }

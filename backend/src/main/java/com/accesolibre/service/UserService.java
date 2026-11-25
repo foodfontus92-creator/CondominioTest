@@ -55,8 +55,9 @@ public class UserService {
 
     @Transactional(readOnly = true)
     public List<UserResponse> listUsers(UUID condoId) {
-        tenantAccessGuard.requireCondoAdmin(condoId);
+        AuthenticatedUser caller = tenantAccessGuard.requireCondoAdmin(condoId);
         return userRepository.findAllByCondominiumIdOrderByFullNameAsc(condoId).stream()
+                .filter(u -> caller.isSuperAdmin() || u.getRole() != UserRole.SUPER_ADMIN)
                 .map(UserResponse::from)
                 .toList();
     }
@@ -109,6 +110,9 @@ public class UserService {
         }
         User user = userRepository.findByIdAndCondominiumId(userId, condoId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
+        if (!caller.isSuperAdmin() && user.getRole() == UserRole.SUPER_ADMIN) {
+            throw new ResourceNotFoundException("User not found: " + userId);
+        }
         return UserResponse.from(user);
     }
 

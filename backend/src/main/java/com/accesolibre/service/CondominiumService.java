@@ -4,6 +4,7 @@ import com.accesolibre.domain.entity.Condominium;
 import com.accesolibre.domain.entity.IotDevice;
 import com.accesolibre.domain.entity.Unit;
 import com.accesolibre.domain.enums.CommunityType;
+import com.accesolibre.domain.enums.SubscriptionStatus;
 import com.accesolibre.dto.condo.CondominiumResponse;
 import com.accesolibre.dto.condo.CreateCondominiumRequest;
 import com.accesolibre.dto.condo.UpdateCondominiumRequest;
@@ -91,6 +92,10 @@ public class CondominiumService {
         condo.setLatitude(request.latitude());
         condo.setLongitude(request.longitude());
         condo.setGeofenceRadiusMeters(request.geofenceRadiusMeters() != null ? request.geofenceRadiusMeters() : 150);
+        condo.setSubscriptionStatus(request.subscriptionStatus() != null ? request.subscriptionStatus() : SubscriptionStatus.ACTIVE);
+        condo.setPlanName(request.planName() != null && !request.planName().isBlank() ? request.planName().trim() : "Mensual");
+        condo.setLicenseExpiresAt(request.licenseExpiresAt());
+        condo.setMaxUnits(request.maxUnits() != null ? request.maxUnits() : 200);
         condo.setActive(true);
 
         return CondominiumResponse.from(condominiumRepository.save(condo));

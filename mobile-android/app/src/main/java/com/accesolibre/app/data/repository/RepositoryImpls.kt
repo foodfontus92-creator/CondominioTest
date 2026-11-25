@@ -167,7 +167,11 @@ class AuthRepositoryImpl(
         runCatching {
             val resp = network.api.getUnitSecret()
             if (!resp.isSuccessful || resp.body() == null) {
-                error(network.extractError(resp, "No se pudo obtener el secreto de la unidad"))
+                throw network.extractTypedError(
+                    resp,
+                    "No se pudo obtener el secreto de la unidad",
+                    communityLabelsFor(_lastCommunityType.value).ofCommunity,
+                )
             }
             val dto = resp.body()!!
             val secret = UnitSecret(
@@ -242,7 +246,8 @@ class AccessRepositoryImpl(
                     )
                 )
                 if (!resp.isSuccessful || resp.body() == null) {
-                    error(network.extractError(resp, "Acceso denegado"))
+                    val ofCommunity = communityLabelsFor(storage.readSession()?.communityType ?: storage.lastCommunityType).ofCommunity
+                    throw network.extractTypedError(resp, "Acceso denegado", ofCommunity)
                 }
                 val dto = resp.body()!!
                 OpenOutcome(
@@ -320,7 +325,10 @@ class PassRepositoryImpl(
                     passDao.markSynced(pending.passId)
                     syncedCount++
                 } else {
-                    passDao.markSyncError(pending.passId, network.extractError(resp, "Error al sincronizar"))
+                    val ofCommunity = communityLabelsFor(storage.readSession()?.communityType ?: storage.lastCommunityType).ofCommunity
+                    val msg = network.extractTypedError(resp, "Error al sincronizar", ofCommunity).message
+                        ?: "Error al sincronizar"
+                    passDao.markSyncError(pending.passId, msg)
                 }
             }
             if (result.isFailure) {
@@ -336,7 +344,8 @@ class PassRepositoryImpl(
             val condoId = storage.readSession()?.condominiumId ?: error("Sesión no iniciada")
             val resp = network.api.revokePass(condoId, passId)
             if (!resp.isSuccessful) {
-                error(network.extractError(resp, "No se pudo revocar el pase"))
+                val ofCommunity = communityLabelsFor(storage.readSession()?.communityType ?: storage.lastCommunityType).ofCommunity
+                throw network.extractTypedError(resp, "No se pudo revocar el pase", ofCommunity)
             }
             passDao.markRevoked(passId)
         }
@@ -375,7 +384,8 @@ class IntercomRepositoryImpl(
             val condoId = storage.readSession()?.condominiumId ?: error("Sesión no iniciada")
             val resp = network.api.unlockIntercomCall(condoId, callId)
             if (!resp.isSuccessful) {
-                error(network.extractError(resp, "No se pudo autorizar el ingreso"))
+                val ofCommunity = communityLabelsFor(storage.readSession()?.communityType ?: storage.lastCommunityType).ofCommunity
+                throw network.extractTypedError(resp, "No se pudo autorizar el ingreso", ofCommunity)
             }
         }
     }

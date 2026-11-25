@@ -99,6 +99,9 @@ class UserServiceSummaryTest {
                 UserRepository.class.getClassLoader(),
                 new Class<?>[]{UserRepository.class},
                 (p, m, a) -> switch (m.getName()) {
+                    case "findAllByCondominiumIdOrderByFullNameAsc" -> allUsers.stream()
+                            .filter(u -> u.getCondominiumId().equals(a[0]))
+                            .toList();
                     case "findAllByCondominiumIdAndRoleOrderByFullNameAsc" -> allUsers.stream()
                             .filter(u -> u.getCondominiumId().equals(a[0]) && u.getRole() == a[1])
                             .toList();
@@ -211,6 +214,18 @@ class UserServiceSummaryTest {
                 new UpdateUserRequest(null, "Super Admin Actualizado", null, null, null, null, null, null)
         );
         assertThat(updated.fullName()).isEqualTo("Super Admin Actualizado");
+    }
+
+    @Test
+    void listUsersHidesSuperAdminFromCondoAdmin() {
+        setCaller(condoAdmin);
+        List<UserResponse> asCondoAdmin = userService.listUsers(condoId);
+        assertThat(asCondoAdmin).noneMatch(u -> u.role() == UserRole.SUPER_ADMIN);
+        assertThat(asCondoAdmin).anyMatch(u -> u.role() == UserRole.CONDO_ADMIN);
+
+        setCaller(superAdmin);
+        List<UserResponse> asSuperAdmin = userService.listUsers(condoId);
+        assertThat(asSuperAdmin).anyMatch(u -> u.role() == UserRole.SUPER_ADMIN);
     }
 
     private void setCaller(User user) {

@@ -4,4 +4,5 @@ com\accesolibre\service\GeofenceServiceTest.class
 com\accesolibre\service\SetupServiceTest.class
 com\accesolibre\service\UnitActivationFlowTest.class
 com\accesolibre\service\UnitBatchServiceTest.class
+com\accesolibre\service\SaasLicensingAndAdminInviteTest.class
 com\accesolibre\service\CompactQrCryptoServiceTest.class

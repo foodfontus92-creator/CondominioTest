@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import com.accesolibre.app.BuildConfig
 import com.accesolibre.app.domain.model.Session
 import com.accesolibre.app.domain.model.UnitSecret
 
@@ -20,7 +21,8 @@ class SecureStorage(context: Context) {
     )
 
     var serverUrl: String?
-        get() = prefs.getString(KEY_SERVER_URL, null)
+        get() = prefs.getString(KEY_SERVER_URL, null)?.takeIf { it.isNotBlank() }
+            ?: BuildConfig.DEFAULT_API_BASE_URL.trimEnd('/')
         set(value) {
             prefs.edit().apply {
                 if (value == null) remove(KEY_SERVER_URL) else putString(KEY_SERVER_URL, value)

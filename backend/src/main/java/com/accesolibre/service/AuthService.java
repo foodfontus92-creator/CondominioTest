@@ -1,5 +1,6 @@
 package com.accesolibre.service;
 
+import com.accesolibre.domain.entity.AdminActivationCode;
 import com.accesolibre.domain.entity.Condominium;
 import com.accesolibre.domain.entity.RefreshToken;
 import com.accesolibre.domain.entity.Unit;
@@ -7,6 +8,7 @@ import com.accesolibre.domain.entity.UnitActivationCode;
 import com.accesolibre.domain.entity.User;
 import com.accesolibre.domain.enums.CommunityType;
 import com.accesolibre.domain.enums.UserRole;
+import com.accesolibre.dto.auth.ActivateAdminRequest;
 import com.accesolibre.dto.auth.ActivateUnitRequest;
 import com.accesolibre.dto.auth.AuthResponse;
 import com.accesolibre.dto.auth.LoginRequest;
@@ -16,6 +18,7 @@ import com.accesolibre.exception.AccessDeniedDomainException;
 import com.accesolibre.exception.BadRequestException;
 import com.accesolibre.exception.ConflictException;
 import com.accesolibre.exception.UnauthorizedException;
+import com.accesolibre.repository.AdminActivationCodeRepository;
 import com.accesolibre.repository.CondominiumRepository;
 import com.accesolibre.repository.RefreshTokenRepository;
 import com.accesolibre.repository.UnitActivationCodeRepository;
@@ -37,6 +40,7 @@ public class AuthService {
     private final CondominiumRepository condominiumRepository;
     private final UnitRepository unitRepository;
     private final UnitActivationCodeRepository activationCodeRepository;
+    private final AdminActivationCodeRepository adminActivationCodeRepository;
     private final UserRepository userRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
@@ -47,6 +51,7 @@ public class AuthService {
             CondominiumRepository condominiumRepository,
             UnitRepository unitRepository,
             UnitActivationCodeRepository activationCodeRepository,
+            AdminActivationCodeRepository adminActivationCodeRepository,
             UserRepository userRepository,
             RefreshTokenRepository refreshTokenRepository,
             PasswordEncoder passwordEncoder,
@@ -56,6 +61,7 @@ public class AuthService {
         this.condominiumRepository = condominiumRepository;
         this.unitRepository = unitRepository;
         this.activationCodeRepository = activationCodeRepository;
+        this.adminActivationCodeRepository = adminActivationCodeRepository;
         this.userRepository = userRepository;
         this.refreshTokenRepository = refreshTokenRepository;
         this.passwordEncoder = passwordEncoder;
@@ -150,6 +156,50 @@ public class AuthService {
         activationCodeRepository.save(codeEntity);
 
         return issueTokenPair(savedResident, communityType, unit);
+    }
+
+    @Transactional
+    public AuthResponse activateAdmin(ActivateAdminRequest request) {
+        String normalizedCode = request.code().trim().toUpperCase(Locale.ROOT);
+        Instant now = Instant.now();
+
+        AdminActivationCode invite = adminActivationCodeRepository.findByCodeForUpdate(normalizedCode)
+                .orElseThrow(() -> new BadRequestException("Código de administrador inválido"));
+
+        if (invite.getUsedAt() != null || invite.getUsedByUserId() != null) {
+            throw new BadRequestException("Este código de administrador ya fue utilizado");
+        }
+        if (!invite.getExpiresAt().isAfter(now)) {
+            throw new BadRequestException("Este código de administrador ha expirado");
+        }
+
+        Condominium condo = condominiumRepository.findById(invite.getCondominiumId())
+                .filter(c -> Boolean.TRUE.equals(c.getActive()))
+                .orElseThrow(() -> new BadRequestException("El recinto asociado al código no está activo"));
+
+        String normalizedEmail = request.email().trim().toLowerCase(Locale.ROOT);
+        if (userRepository.existsByCondominiumIdAndEmailIgnoreCase(condo.getId(), normalizedEmail)) {
+            throw new ConflictException("Ya existe una cuenta registrada con ese correo en este recinto");
+        }
+
+        User admin = new User();
+        admin.setCondominiumId(condo.getId());
+        admin.setUnitId(null);
+        admin.setEmail(normalizedEmail);
+        admin.setPasswordHash(passwordEncoder.encode(request.password()));
+        admin.setFullName(request.fullName().trim());
+        admin.setPhone(request.phone() != null && !request.phone().isBlank() ? request.phone().trim() : null);
+        admin.setRole(UserRole.CONDO_ADMIN);
+        admin.setActive(true);
+        admin.setBlocked(false);
+        admin.setLastLoginAt(now);
+        User savedAdmin = userRepository.save(admin);
+
+        invite.setUsedByUserId(savedAdmin.getId());
+        invite.setUsedAt(now);
+        adminActivationCodeRepository.save(invite);
+
+        return issueTokenPair(savedAdmin, resolveCommunityType(condo), null);
     }
 
     @Transactional

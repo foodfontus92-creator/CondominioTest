@@ -1,5 +1,7 @@
 package com.accesolibre.app.domain.qr
 
+import com.accesolibre.app.data.remote.formatLicenseSuspendedMessage
+import com.accesolibre.app.data.remote.isLicenseErrorResponse
 import com.accesolibre.app.domain.model.communityLabelsFor
 import com.accesolibre.app.domain.model.formatUnitDisplay
 import org.junit.Assert.assertEquals
@@ -64,5 +66,13 @@ class CompactQrTest {
         assertEquals("Block B · Depto 203", formatUnitDisplay("POBLACION", "Block B", "203"))
         assertEquals("Torre A · Depto 402", formatUnitDisplay("CONDOMINIUM", "Torre A", "402"))
         assertEquals("Pasaje Sur · Casa 15", formatUnitDisplay("VILLA", "Pasaje Sur", "15"))
+
+        org.junit.Assert.assertTrue(isLicenseErrorResponse(402, null))
+        org.junit.Assert.assertTrue(isLicenseErrorResponse(403, "LICENSE_SUSPENDED_OR_EXPIRED"))
+        org.junit.Assert.assertFalse(isLicenseErrorResponse(403, "DENIED_UNIT_BLOCKED"))
+        assertEquals(
+            "El servicio de la población se encuentra temporalmente suspendido por licencia. Contacta a la administración.",
+            formatLicenseSuspendedMessage("de la población"),
+        )
     }
 }

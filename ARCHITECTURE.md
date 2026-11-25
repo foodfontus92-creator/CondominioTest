@@ -313,16 +313,23 @@ Sensor magnético (Reed Switch): contacto cerrado = portón cerrado. Si permanec
 
 ## 7. Contratos de API REST, WebSocket STOMP y Seguridad de Sesión
 
-- **Base URL Local:** `http://<LAN_HOST>/api/v1` (proxeada por `web-admin` Nginx hacia `backend:8080`).
+- **Base URL Local / Producción:** `/api/v1` (proxeada por `web-admin` Nginx hacia `backend:8080`, o directa vía `VITE_API_URL=https://api-accesolibre.fodtech.cl` desde `https://accesolibre.fodtech.cl` con `CORS_ALLOWED_ORIGINS`).
+- **App Android (`/mobile-android`):** Apunta por defecto a `https://api-accesolibre.fodtech.cl/` (`BuildConfig.DEFAULT_API_BASE_URL`), operando tanto en Wi-Fi local como con datos móviles 4G/5G (editable en pantalla de servidor si se usa IP LAN).
 - **Configuración Inicial (Initial Setup Wizard):**
   - `GET /api/v1/setup/status` (público): retorna `{"initialized": boolean, "defaultCommunityType": "CONDOMINIUM|POBLACION|VILLA|PASAJE"}` verificando si existe al menos un usuario en la tabla `users`.
   - `POST /api/v1/setup/initialize` (público únicamente mientras no existan usuarios): crea el primer recinto residencial con su **dirección única, coordenadas GPS y geofence** (que aplican a todos sus blocks y portones), `communityType` (`CONDOMINIUM`, `POBLACION`, `VILLA`, `PASAJE`), `hmac_secret` aleatorio de 64 caracteres hexadecimales y el primer usuario `SUPER_ADMIN` con contraseña cifrada vía `PasswordEncoder`. Si ya existe al menos un usuario en `users`, rechaza cualquier petición con HTTP `403 Forbidden` (`El sistema ya fue inicializado`).
 - **Autenticación de Usuarios (Web Admin y App Android):**
   - `POST /api/v1/auth/login` emite `accessToken` + `refreshToken` firmados con `JWT_SECRET` (exclusivo para clientes HTTP/WS; **nunca** utilizado en códigos QR) e incluye `communityType` en `AuthResponse` y `user`. Los Refresh Tokens se almacenan hasheados (SHA-256) en PostgreSQL (`refresh_tokens`) con rotación y revocación real.
   - `POST /api/v1/auth/activate-unit` (público): auto-registro de residente mediante código familiar (`<CONDO_CODE>-<UNIT_NUMBER>-<4_DIGITOS>`), validando vigencia y cupos (`used_count < max_uses`) y devolviendo tokens JWT estándar + `communityType`.
+  - `POST /api/v1/auth/activate-admin` (público): auto-registro de `CONDO_ADMIN` mediante código único `ADM-XXXX` (vigente 72 h, creado por `SUPER_ADMIN`), marcando el código como usado y devolviendo tokens JWT estándar.
   - `POST /api/v1/auth/refresh`, `POST /api/v1/auth/logout`, `GET /api/v1/auth/me`.
   - Header estándar: `Authorization: Bearer <accessToken>`.
   - Roles soportados: `SUPER_ADMIN`, `CONDO_ADMIN`, `RESIDENT`.
+- **Panel Maestro SaaS y Licenciamiento (`SUPER_ADMIN`):**
+  - `GET /api/v1/super-admin/overview` — KPIs globales de la plataforma SaaS (recintos totales, activos, por vencer ≤ 7 días, vencidos/suspendidos, viviendas, usuarios) y detalle por recinto.
+  - `POST /api/v1/super-admin/condos/{condoId}/admin-code` — Genera código de invitación único `ADM-XXXX` (válido 72 h) para un nuevo administrador del recinto.
+  - `PATCH /api/v1/super-admin/condos/{condoId}/license` — Actualiza `subscriptionStatus` (`TRIAL`, `ACTIVE`, `EXPIRED`, `SUSPENDED`), `planName`, `licenseExpiresAt`, `maxUnits` y acciones rápidas (`EXTEND_30_DAYS`, `EXTEND_1_YEAR`, `ACTIVATE_UNLIMITED`, `SUSPEND`).
+  - **Enforcement automático (HTTP `402 Payment Required`, `LICENSE_SUSPENDED_OR_EXPIRED`):** Si un recinto está `SUSPENDED`, `EXPIRED` o su `license_expires_at` venció, se rechazan la apertura remota (`/api/v1/access/open`), la emisión/validación de pases QR y la descarga de `unit_secret`.
 - **Recursos Principales (Multi-Tenant):**
   - `/api/v1/condominiums` — Alta/gestión de recintos (`CONDOMINIUM`, `POBLACION`, `VILLA`, `PASAJE`), coordenadas de geofencing y rotación de `hmac_secret`.
   - `/api/v1/condos/{condoId}/units` — Gestión de unidades/viviendas agrupadas opcionalmente por `block_name` (`Block B`, `Block C`, `Pasaje`, etc.), creación masiva por Block (`POST .../units/batch` con `blockName` + `unitNumbers`, heredando dirección y GPS del recinto), estado de bloqueo (`blocked`), secreto derivado (`unit_secret`), extensiones de intercomunicador, emisión de códigos familiares (`POST .../{unitId}/activation-codes`) y revocación masiva (`POST .../{unitId}/revoke-residents`).
@@ -351,7 +358,7 @@ Esquema definido en [`backend/src/main/resources/db/migration/V1__init_schema.sq
 
 | Tabla | Rol en el Dominio | Clave de Aislamiento Multi-Tenant |
 | :--- | :--- | :--- |
-| `condominiums` | Inquilinos (condominios, poblaciones, villas, pasajes), `community_type` (V4), dirección/GPS únicos y su `hmac_secret` versionado | `id` (raíz del tenant) |
+| `condominiums` | Inquilinos (recintos), `community_type` (V4), licenciamiento SaaS (`subscription_status`, `plan_name`, `license_expires_at`, `max_units`, V5), dirección/GPS y `hmac_secret` | `id` (raíz del tenant) |
 | `units` | Departamentos / casas agrupados por `block_name` (V4) y extensión del intercomunicador | `condominium_id` + `UNIQUE (id, condominium_id)` |
 | `users` | Administradores y residentes autenticados | `condominium_id` + FK compuesta a `units` |
 | `iot_devices` | Controladores ESP32 (portones, puertas, intercomunicadores) | `condominium_id` + `UNIQUE (id, condominium_id)` |
@@ -359,6 +366,7 @@ Esquema definido en [`backend/src/main/resources/db/migration/V1__init_schema.sq
 | `access_logs` | Bitácora inmutable de accesos (online y sincronizados offline) | `condominium_id` + FKs compuestas opcionales |
 | `intercom_calls` | Registro y señalización LAN de llamadas portero-residente | `condominium_id` + FKs compuestas a `iot_devices`, `units` y `users` |
 | `unit_activation_codes` | Códigos de auto-registro familiar por unidad (V3) | `condominium_id` + FK compuesta a `units` |
+| `admin_activation_codes` | Códigos de invitación única (`ADM-XXXX`) para administradores de recinto (V5) | `condominium_id` + FK compuesta a `users` |
 
 ---
 

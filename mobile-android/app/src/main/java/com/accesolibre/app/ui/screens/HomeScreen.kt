@@ -175,7 +175,16 @@ fun HomeScreen(
                 ) {
                     Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error)
                     Spacer(Modifier.width(12.dp))
-                    Text(err, color = MaterialTheme.colorScheme.onErrorContainer)
+                    Column {
+                        if (state.licenseSuspended) {
+                            Text(
+                                text = "Servicio suspendido por licencia",
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                            )
+                        }
+                        Text(err, color = MaterialTheme.colorScheme.onErrorContainer)
+                    }
                 }
             }
         }

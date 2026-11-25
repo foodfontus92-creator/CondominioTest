@@ -44,9 +44,10 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/setup/status").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/setup/initialize").permitAll()
-                        .requestMatchers("/api/v1/auth/login", "/api/v1/auth/refresh", "/api/v1/auth/activate-unit").permitAll()
+                        .requestMatchers("/api/v1/auth/login", "/api/v1/auth/refresh", "/api/v1/auth/activate-unit", "/api/v1/auth/activate-admin").permitAll()
                         .requestMatchers("/api/v1/public/intercom/**").permitAll()
                         .requestMatchers("/ws/intercom/**").permitAll()
+                        .requestMatchers("/api/v1/super-admin/**").hasRole("SUPER_ADMIN")
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

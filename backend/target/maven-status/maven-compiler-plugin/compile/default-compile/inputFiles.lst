@@ -9,10 +9,12 @@ U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\controller\Condo
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\controller\IntercomController.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\controller\IotDeviceController.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\controller\SetupController.java
+U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\controller\SuperAdminController.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\controller\UnitController.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\controller\UserController.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\domain\entity\AccessLog.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\domain\entity\AccessPass.java
+U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\domain\entity\AdminActivationCode.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\domain\entity\Condominium.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\domain\entity\IntercomCall.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\domain\entity\IotDevice.java
@@ -28,10 +30,12 @@ U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\domain\enums\Dev
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\domain\enums\IntercomCallStatus.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\domain\enums\PassStatus.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\domain\enums\PassType.java
+U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\domain\enums\SubscriptionStatus.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\domain\enums\UserRole.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\access\AccessLogResponse.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\access\RemoteOpenRequest.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\access\RemoteOpenResponse.java
+U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\auth\ActivateAdminRequest.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\auth\ActivateUnitRequest.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\auth\AuthResponse.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\auth\LoginRequest.java
@@ -56,6 +60,10 @@ U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\qr\RegisterO
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\qr\UnitSecretResponse.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\qr\ValidateQrRequest.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\qr\ValidateQrResponse.java
+U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\saas\AdminActivationCodeResponse.java
+U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\saas\SaasCondoOverviewItem.java
+U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\saas\SaasOverviewResponse.java
+U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\saas\UpdateCondoLicenseRequest.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\setup\SetupInitializeRequest.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\setup\SetupInitializeResponse.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\setup\SetupStatusResponse.java
@@ -77,6 +85,7 @@ U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\exception\BadReq
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\exception\ConflictException.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\exception\ForbiddenTenantException.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\exception\GlobalExceptionHandler.java
+U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\exception\LicenseSuspendedException.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\exception\ResourceNotFoundException.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\exception\UnauthorizedException.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\mqtt\MqttGatewayService.java
@@ -85,6 +94,7 @@ U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\mqtt\MqttTelemet
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\mqtt\MqttTopicBuilder.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\repository\AccessLogRepository.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\repository\AccessPassRepository.java
+U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\repository\AdminActivationCodeRepository.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\repository\CondominiumRepository.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\repository\IntercomCallRepository.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\repository\IotDeviceRepository.java
@@ -106,6 +116,7 @@ U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\service\Condomin
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\service\GeofenceService.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\service\IntercomService.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\service\IotDeviceService.java
+U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\service\SaasAdminService.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\service\SetupService.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\service\UnitActivationService.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\service\UnitService.java

@@ -134,7 +134,7 @@ fun LoginScreen(
 
             Spacer(Modifier.height(8.dp))
             TextButton(onClick = onChangeServer) {
-                Text("Cambiar servidor local")
+                Text("Cambiar servidor")
             }
 
             state.errorMessage?.let { err ->

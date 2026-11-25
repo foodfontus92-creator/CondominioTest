@@ -21,6 +21,7 @@ import com.accesolibre.dto.qr.ValidateQrResponse;
 import com.accesolibre.exception.AccessDeniedDomainException;
 import com.accesolibre.exception.BadRequestException;
 import com.accesolibre.exception.ForbiddenTenantException;
+import com.accesolibre.exception.LicenseSuspendedException;
 import com.accesolibre.exception.ResourceNotFoundException;
 import com.accesolibre.mqtt.MqttGatewayService;
 import com.accesolibre.repository.AccessLogRepository;
@@ -106,8 +107,10 @@ public class AccessPassService {
         }
 
         Condominium condo = condominiumRepository.findById(user.getCondominiumId())
-                .filter(c -> Boolean.TRUE.equals(c.getActive()))
-                .orElseThrow(() -> new ResourceNotFoundException("Condominium not found or inactive"));
+                .orElseThrow(() -> new ResourceNotFoundException("Condominium not found"));
+        if (!condo.isLicenseActiveAt(Instant.now())) {
+            throw new LicenseSuspendedException();
+        }
 
         Unit unit = unitRepository.findByIdAndCondominiumId(user.getUnitId(), user.getCondominiumId())
                 .orElseThrow(() -> new ResourceNotFoundException("Unit not found"));
@@ -157,8 +160,12 @@ public class AccessPassService {
         }
 
         Condominium condo = condominiumRepository.findById(condoId)
-                .filter(c -> Boolean.TRUE.equals(c.getActive()))
-                .orElseThrow(() -> new ResourceNotFoundException("Condominium not found or inactive"));
+                .orElseThrow(() -> new ResourceNotFoundException("Condominium not found"));
+
+        Instant now = Instant.now();
+        if (!condo.isLicenseActiveAt(now)) {
+            throw new LicenseSuspendedException();
+        }
 
         Unit unit = unitRepository.findByIdAndCondominiumId(targetUnitId, condoId)
                 .orElseThrow(() -> new ResourceNotFoundException("Unit not found: " + targetUnitId));
@@ -166,7 +173,6 @@ public class AccessPassService {
             throw new AccessDeniedDomainException("DENIED_UNIT_BLOCKED", "Unit is inactive or blocked");
         }
 
-        Instant now = Instant.now();
         Instant validFrom = request.validFrom() != null ? request.validFrom() : now;
         Instant expiresAt = request.expiresAt() != null
                 ? request.expiresAt()
@@ -219,6 +225,9 @@ public class AccessPassService {
 
         Condominium condo = condominiumRepository.findById(condoId)
                 .orElseThrow(() -> new ResourceNotFoundException("Condominium not found"));
+        if (!condo.isLicenseActiveAt(Instant.now())) {
+            throw new LicenseSuspendedException();
+        }
         Unit unit = unitRepository.findByIdAndCondominiumId(parsed.unitId(), condoId)
                 .orElseThrow(() -> new ResourceNotFoundException("Unit not found"));
 
@@ -267,6 +276,14 @@ public class AccessPassService {
         if (request.deviceId() != null) {
             device = deviceRepository.findByIdAndCondominiumId(request.deviceId(), condoId)
                     .orElseThrow(() -> new ResourceNotFoundException("IoT device not found: " + request.deviceId()));
+        }
+
+        Condominium condo = condominiumRepository.findById(condoId)
+                .orElseThrow(() -> new ResourceNotFoundException("Condominium not found"));
+        if (!condo.isLicenseActiveAt(now)) {
+            recordQrLog(condoId, device, null, null, caller.userId(), AccessResult.DENIED_UNAUTHORIZED, rawPayload,
+                    Map.of("reason", LicenseSuspendedException.CODE));
+            throw new LicenseSuspendedException();
         }
 
         Optional<CompactQrCryptoService.ParsedQrPayload> parsedOpt = qrCryptoService.parseQrPayload(rawPayload);

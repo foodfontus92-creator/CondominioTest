@@ -2,6 +2,8 @@ import { api } from './client';
 import type {
   AccessLog,
   AccessLogFilters,
+  ActivateAdminBody,
+  AdminActivationCodeResponse,
   AppUser,
   AuthResponse,
   BatchCreateUnitsBody,
@@ -16,10 +18,12 @@ import type {
   Page,
   ResidentsSummary,
   RevokeResidentsResponse,
+  SaasOverviewResponse,
   SetupInitializeBody,
   SetupInitializeResponse,
   SetupStatusResponse,
   UnitActivationCodeResponse,
+  UpdateCondoLicenseBody,
   UpdateCondominiumBody,
   UpdateDeviceBody,
   UpdateUnitBody,
@@ -36,7 +40,17 @@ export const setupApi = {
 export const authApi = {
   login: (condominiumCode: string, email: string, password: string) =>
     api.post<AuthResponse>('/auth/login', { condominiumCode, email, password }).then((r) => r.data),
+  activateAdmin: (body: ActivateAdminBody) =>
+    api.post<AuthResponse>('/auth/activate-admin', body).then((r) => r.data),
   logout: (refreshToken: string) => api.post('/auth/logout', { refreshToken }).then(() => undefined),
+};
+
+export const saasApi = {
+  overview: () => api.get<SaasOverviewResponse>('/super-admin/overview').then((r) => r.data),
+  createAdminCode: (condoId: string) =>
+    api.post<AdminActivationCodeResponse>(`/super-admin/condos/${condoId}/admin-code`).then((r) => r.data),
+  updateLicense: (condoId: string, body: UpdateCondoLicenseBody) =>
+    api.patch<Condominium>(`/super-admin/condos/${condoId}/license`, body).then((r) => r.data),
 };
 
 export const condoApi = {

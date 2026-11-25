@@ -18,10 +18,32 @@ export class ApiError extends Error {
 
 export const AUTH_LOGOUT_EVENT = 'auth:logout';
 
-const PUBLIC_PATHS = ['/auth/login', '/auth/refresh', '/auth/activate-unit', '/setup/status', '/setup/initialize'];
+const rawEnvUrl = ((import.meta.env.VITE_API_URL as string | undefined) ?? '').trim().replace(/\/+$/, '');
+export const API_ORIGIN = rawEnvUrl.replace(/\/api\/v1$/, '');
+export const API_BASE_URL = API_ORIGIN ? `${API_ORIGIN}/api/v1` : '/api/v1';
+
+export function resolveWsBrokerUrl(): string {
+  if (API_ORIGIN.startsWith('https://')) {
+    return `${API_ORIGIN.replace(/^https:\/\//, 'wss://')}/ws/intercom`;
+  }
+  if (API_ORIGIN.startsWith('http://')) {
+    return `${API_ORIGIN.replace(/^http:\/\//, 'ws://')}/ws/intercom`;
+  }
+  const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
+  return `${proto}://${window.location.host}/ws/intercom`;
+}
+
+const PUBLIC_PATHS = [
+  '/auth/login',
+  '/auth/refresh',
+  '/auth/activate-unit',
+  '/auth/activate-admin',
+  '/setup/status',
+  '/setup/initialize',
+];
 const isPublicPath = (url?: string) => !!url && PUBLIC_PATHS.some((p) => url.endsWith(p));
 
-export const api = axios.create({ baseURL: '/api/v1', timeout: 20000 });
+export const api = axios.create({ baseURL: API_BASE_URL, timeout: 20000 });
 
 api.interceptors.request.use((config) => {
   const token = tokenStore.access();
@@ -40,7 +62,7 @@ export function refreshAccessToken(): Promise<string | null> {
       const refreshToken = tokenStore.refresh();
       if (!refreshToken) return null;
       try {
-        const { data } = await axios.post<AuthResponse>('/api/v1/auth/refresh', { refreshToken });
+        const { data } = await axios.post<AuthResponse>(`${API_BASE_URL}/auth/refresh`, { refreshToken });
         tokenStore.save(data);
         return data.accessToken;
       } catch {

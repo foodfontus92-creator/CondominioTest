@@ -14,6 +14,7 @@ import com.accesolibre.dto.unit.CreateUnitActivationCodeRequest;
 import com.accesolibre.dto.unit.RevokeUnitResidentsResponse;
 import com.accesolibre.dto.unit.UnitActivationCodeResponse;
 import com.accesolibre.exception.BadRequestException;
+import com.accesolibre.repository.AdminActivationCodeRepository;
 import com.accesolibre.repository.CondominiumRepository;
 import com.accesolibre.repository.RefreshTokenRepository;
 import com.accesolibre.repository.UnitActivationCodeRepository;
@@ -217,8 +218,14 @@ class UnitActivationFlowTest {
         props.getSecurity().setJwtSecret("9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08");
         TenantAccessGuard guard = new TenantAccessGuard();
 
+        AdminActivationCodeRepository adminCodeRepo = (AdminActivationCodeRepository) Proxy.newProxyInstance(
+                AdminActivationCodeRepository.class.getClassLoader(),
+                new Class<?>[]{AdminActivationCodeRepository.class},
+                (p, m, a) -> Optional.empty()
+        );
+
         unitActivationService = new UnitActivationService(codeRepo, condoRepo, unitRepo, userRepo, refreshRepo, guard);
-        authService = new AuthService(condoRepo, unitRepo, codeRepo, userRepo, refreshRepo, passwordEncoder, new JwtService(props), guard);
+        authService = new AuthService(condoRepo, unitRepo, codeRepo, adminCodeRepo, userRepo, refreshRepo, passwordEncoder, new JwtService(props), guard);
     }
 
     @AfterEach

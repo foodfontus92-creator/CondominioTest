@@ -81,6 +81,7 @@ public class UnitService {
 
         String unitNumber = request.unitNumber().trim();
         String blockName = normalizeNullable(request.blockName() != null ? request.blockName() : request.towerOrBlock());
+        enforceMaxUnits(condoId, condo, 1);
         assertUniqueUnitInBlock(condoId, null, blockName, unitNumber);
 
         if (request.intercomExtension() != null && !request.intercomExtension().isBlank()
@@ -128,6 +129,7 @@ public class UnitService {
         }
 
         List<Unit> existingUnits = unitRepository.findAllByCondominiumIdOrderByUnitNumberAsc(condoId);
+        enforceMaxUnits(condo, existingUnits, deduplicatedNumbers.size());
         String targetBlockKey = normalizeBlockKey(blockName);
         Set<String> existingKeysInBlock = new LinkedHashSet<>();
         for (Unit existing : existingUnits) {
@@ -211,6 +213,22 @@ public class UnitService {
         }
 
         return UnitResponse.from(unitRepository.save(unit));
+    }
+
+    private void enforceMaxUnits(UUID condoId, Condominium condo, int addingCount) {
+        enforceMaxUnits(condo, unitRepository.findAllByCondominiumIdOrderByUnitNumberAsc(condoId), addingCount);
+    }
+
+    private void enforceMaxUnits(Condominium condo, List<Unit> existingUnits, int addingCount) {
+        int maxUnits = condo.getMaxUnits() != null ? condo.getMaxUnits() : 200;
+        long activeCount = existingUnits.stream()
+                .filter(u -> Boolean.TRUE.equals(u.getActive()))
+                .count();
+        if (activeCount + addingCount > maxUnits) {
+            throw new BadRequestException(
+                    "El recinto alcanzó el límite de " + maxUnits + " viviendas permitidas en su plan actual."
+            );
+        }
     }
 
     private void assertUniqueUnitInBlock(UUID condoId, UUID excludeUnitId, String blockName, String unitNumber) {

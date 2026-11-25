@@ -3,7 +3,7 @@ import { useAuth } from '../auth/AuthContext';
 import { useTenant, useDevices } from '../context/TenantContext';
 import { useLiveState } from '../live/LiveFeed';
 import { useCommunityLabels } from '../lib/communityLabels';
-import { hasGateAlert, roleLabel } from '../lib/format';
+import { hasGateAlert, formatDateTime, roleLabel } from '../lib/format';
 
 const liveStyle = {
   connected: { dot: 'bg-emerald-500', text: 'En vivo' },
@@ -19,6 +19,11 @@ export default function Layout() {
   const devices = useDevices();
   const alerts = (devices.data ?? []).filter(hasGateAlert);
 
+  const licenseDaysLeft =
+    condo?.licenseExpiresAt != null
+      ? Math.ceil((new Date(condo.licenseExpiresAt).getTime() - Date.now()) / 86_400_000)
+      : null;
+
   const navItems = [
     { to: '/', label: 'Resumen', icon: '📊', end: true },
     { to: '/unidades', label: labels.unitsNav, icon: '🏠' },
@@ -26,6 +31,7 @@ export default function Layout() {
     { to: '/dispositivos', label: 'Dispositivos', icon: '📡' },
     { to: '/bitacora', label: 'Bitácora', icon: '📋' },
     { to: '/condominios', label: labels.communityName, icon: '🏢' },
+    ...(isSuperAdmin ? [{ to: '/clientes', label: 'Mis Clientes / Licencias', icon: '💼' }] : []),
   ];
 
   return (
@@ -91,6 +97,18 @@ export default function Layout() {
           </div>
         </header>
 
+        {condo && !condo.licenseActive && (
+          <div className="border-b border-red-200 bg-red-50 px-6 py-3 text-sm text-red-800">
+            <strong>⛔ Licencia vencida o suspendida:</strong> El control de accesos y emisión de pases QR de este recinto
+            está temporalmente bloqueado. Contacta al administrador de plataforma para renovar el plan ({condo.planName}).
+          </div>
+        )}
+        {condo && condo.licenseActive && licenseDaysLeft !== null && licenseDaysLeft <= 7 && (
+          <div className="border-b border-amber-200 bg-amber-50 px-6 py-2.5 text-sm text-amber-800">
+            <strong>⏳ Licencia próxima a vencer:</strong> Tu plan <strong>{condo.planName}</strong> vence en{' '}
+            <strong>{Math.max(0, licenseDaysLeft)} día(s)</strong> ({formatDateTime(condo.licenseExpiresAt)}).
+          </div>
+        )}
         {alerts.length > 0 && (
           <div className="border-b border-red-200 bg-red-50 px-6 py-3 text-sm text-red-800">
             <strong>⚠ Portón abierto:</strong> {alerts.map((d) => d.name).join(', ')} lleva más de 45 s abierto.

@@ -139,7 +139,9 @@ export default function ResidentsPage() {
           <option value="">Todos los roles</option>
           <option value="RESIDENT">{labels.residentsNav}</option>
           <option value="CONDO_ADMIN">Administradores</option>
-          <option value="SUPER_ADMIN">Super administradores</option>
+          {currentUser?.role === 'SUPER_ADMIN' && (
+            <option value="SUPER_ADMIN">Super administradores</option>
+          )}
         </select>
         <span className="ml-auto text-sm text-slate-500">{rows.length} de {users.data?.length ?? 0}</span>
       </div>

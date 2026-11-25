@@ -13,6 +13,7 @@ import com.accesolibre.dto.access.RemoteOpenResponse;
 import com.accesolibre.dto.common.PageResponse;
 import com.accesolibre.exception.AccessDeniedDomainException;
 import com.accesolibre.exception.BadRequestException;
+import com.accesolibre.exception.LicenseSuspendedException;
 import com.accesolibre.exception.ResourceNotFoundException;
 import com.accesolibre.mqtt.MqttGatewayService;
 import com.accesolibre.mqtt.MqttTopicBuilder;
@@ -77,7 +78,7 @@ public class AccessControlService {
      *
      * noRollbackFor ensures denied access attempts remain persisted in access_logs.
      */
-    @Transactional(noRollbackFor = AccessDeniedDomainException.class)
+    @Transactional(noRollbackFor = {AccessDeniedDomainException.class, LicenseSuspendedException.class})
     public RemoteOpenResponse remoteOpen(RemoteOpenRequest request) {
         AuthenticatedUser principal = tenantAccessGuard.currentUser();
         UUID condoId = principal.condominiumId();
@@ -87,11 +88,21 @@ public class AccessControlService {
                 .orElseThrow(() -> new ResourceNotFoundException("Authenticated user not found"));
 
         Condominium condo = condominiumRepository.findById(condoId)
-                .filter(c -> Boolean.TRUE.equals(c.getActive()))
-                .orElseThrow(() -> new ResourceNotFoundException("Condominium not found or inactive"));
+                .orElseThrow(() -> new ResourceNotFoundException("Condominium not found"));
 
         IotDevice device = deviceRepository.findByIdAndCondominiumId(request.deviceId(), condoId)
                 .orElseThrow(() -> new ResourceNotFoundException("IoT device not found in condominium: " + request.deviceId()));
+
+        if (!condo.isLicenseActiveAt(now)) {
+            persistLog(condoId, device.getId(), user.getUnitId(), user.getId(),
+                    AccessMethod.REMOTE_APP, AccessResult.DENIED_UNAUTHORIZED,
+                    Map.of(
+                            "reason", LicenseSuspendedException.CODE,
+                            "subscription_status", String.valueOf(condo.getSubscriptionStatus())
+                    ),
+                    now);
+            throw new LicenseSuspendedException();
+        }
 
         if (!Boolean.TRUE.equals(device.getActive())) {
             throw new BadRequestException("Target IoT device is inactive");

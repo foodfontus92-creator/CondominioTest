@@ -1,5 +1,6 @@
 package com.accesolibre.controller;
 
+import com.accesolibre.dto.auth.ActivateAdminRequest;
 import com.accesolibre.dto.auth.ActivateUnitRequest;
 import com.accesolibre.dto.auth.AuthResponse;
 import com.accesolibre.dto.auth.LoginRequest;
@@ -32,6 +33,11 @@ public class AuthController {
     @PostMapping("/activate-unit")
     public ResponseEntity<AuthResponse> activateUnit(@Valid @RequestBody ActivateUnitRequest request) {
         return ResponseEntity.ok(authService.activateUnit(request));
+    }
+
+    @PostMapping("/activate-admin")
+    public ResponseEntity<AuthResponse> activateAdmin(@Valid @RequestBody ActivateAdminRequest request) {
+        return ResponseEntity.ok(authService.activateAdmin(request));
     }
 
     @PostMapping("/refresh")

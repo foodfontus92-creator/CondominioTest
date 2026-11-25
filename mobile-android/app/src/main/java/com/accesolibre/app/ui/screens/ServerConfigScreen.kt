@@ -57,13 +57,13 @@ fun ServerConfigScreen(
             )
             Spacer(Modifier.height(12.dp))
             Text(
-                text = "Servidor Local AccesoLibre",
+                text = "Servidor AccesoLibre",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
             )
             Spacer(Modifier.height(6.dp))
             Text(
-                text = "Ingresa la dirección IP o host local del servidor del condominio (100% red local, sin nube).",
+                text = "Conecta por defecto con el servidor HTTPS (Wi-Fi o 4G/5G), o indica la IP local si usas red privada.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -72,8 +72,8 @@ fun ServerConfigScreen(
             OutlinedTextField(
                 value = state.urlInput,
                 onValueChange = viewModel::onUrlChange,
-                label = { Text("URL del servidor local") },
-                placeholder = { Text("http://192.168.1.100:8080") },
+                label = { Text("URL del servidor") },
+                placeholder = { Text("https://api-accesolibre.fodtech.cl") },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
                 modifier = Modifier.fillMaxWidth(),

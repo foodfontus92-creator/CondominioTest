@@ -1,5 +1,6 @@
 import { FormEvent, useMemo, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { API_ORIGIN } from '../api/client';
 import { unitApi } from '../api/endpoints';
 import type { Unit, UnitActivationCodeResponse } from '../api/types';
 import { Badge, EmptyState, ErrorBox, Field, Modal, PageHeader, Spinner } from '../components/ui';
@@ -459,7 +460,7 @@ function FamilyCodeModal({
 
   const copyWhatsAppInvite = async () => {
     if (!generated) return;
-    const serverOrigin = window.location.origin;
+    const serverOrigin = API_ORIGIN || window.location.origin;
     const message = [
       `¡Hola! Bienvenidos a *${condoName}* (${labels.unitSingular} *${formatUnitLabel(unit)}*).`,
       '',

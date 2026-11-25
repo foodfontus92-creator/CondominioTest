@@ -1,6 +1,7 @@
 package com.accesolibre.dto.condo;
 
 import com.accesolibre.domain.enums.CommunityType;
+import com.accesolibre.domain.enums.SubscriptionStatus;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Max;
@@ -8,6 +9,8 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+
+import java.time.Instant;
 
 public record CreateCondominiumRequest(
         @NotBlank
@@ -34,6 +37,16 @@ public record CreateCondominiumRequest(
         @Min(10) @Max(5000)
         Integer geofenceRadiusMeters,
 
-        CommunityType communityType
+        CommunityType communityType,
+
+        SubscriptionStatus subscriptionStatus,
+
+        @Size(max = 64)
+        String planName,
+
+        Instant licenseExpiresAt,
+
+        @Min(1) @Max(50000)
+        Integer maxUnits
 ) {
 }

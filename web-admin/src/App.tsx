@@ -11,8 +11,15 @@ import DashboardPage from './pages/DashboardPage';
 import DevicesPage from './pages/DevicesPage';
 import LoginPage from './pages/LoginPage';
 import ResidentsPage from './pages/ResidentsPage';
+import SaasDashboardPage from './pages/SaasDashboardPage';
 import SetupPage from './pages/SetupPage';
 import UnitsPage from './pages/UnitsPage';
+
+function SuperAdminRoute({ children }: { children: JSX.Element }) {
+  const { user } = useAuth();
+  if (user?.role !== 'SUPER_ADMIN') return <Navigate to="/" replace />;
+  return children;
+}
 
 function Protected() {
   const { user } = useAuth();
@@ -73,6 +80,14 @@ export default function App() {
         <Route path="dispositivos" element={<DevicesPage />} />
         <Route path="bitacora" element={<AuditPage />} />
         <Route path="condominios" element={<CondominiumsPage />} />
+        <Route
+          path="clientes"
+          element={
+            <SuperAdminRoute>
+              <SaasDashboardPage />
+            </SuperAdminRoute>
+          }
+        />
       </Route>
       <Route path="*" element={<Navigate to={initialized ? '/' : '/setup'} replace />} />
     </Routes>

@@ -1,6 +1,7 @@
 package com.accesolibre.domain.entity;
 
 import com.accesolibre.domain.enums.CommunityType;
+import com.accesolibre.domain.enums.SubscriptionStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -58,6 +59,19 @@ public class Condominium {
     @Column(name = "active", nullable = false)
     private Boolean active = true;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "subscription_status", nullable = false, length = 24)
+    private SubscriptionStatus subscriptionStatus = SubscriptionStatus.ACTIVE;
+
+    @Column(name = "plan_name", nullable = false, length = 64)
+    private String planName = "Mensual";
+
+    @Column(name = "license_expires_at")
+    private Instant licenseExpiresAt;
+
+    @Column(name = "max_units", nullable = false)
+    private Integer maxUnits = 200;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -85,6 +99,15 @@ public class Condominium {
         }
         if (this.communityType == null) {
             this.communityType = CommunityType.CONDOMINIUM;
+        }
+        if (this.subscriptionStatus == null) {
+            this.subscriptionStatus = SubscriptionStatus.ACTIVE;
+        }
+        if (this.planName == null || this.planName.isBlank()) {
+            this.planName = "Mensual";
+        }
+        if (this.maxUnits == null || this.maxUnits < 1) {
+            this.maxUnits = 200;
         }
     }
 
@@ -128,6 +151,40 @@ public class Condominium {
 
     public Boolean getActive() { return active; }
     public void setActive(Boolean active) { this.active = active; }
+
+    public SubscriptionStatus getSubscriptionStatus() { return subscriptionStatus; }
+    public void setSubscriptionStatus(SubscriptionStatus subscriptionStatus) { this.subscriptionStatus = subscriptionStatus; }
+
+    public String getPlanName() { return planName; }
+    public void setPlanName(String planName) { this.planName = planName; }
+
+    public Instant getLicenseExpiresAt() { return licenseExpiresAt; }
+    public void setLicenseExpiresAt(Instant licenseExpiresAt) { this.licenseExpiresAt = licenseExpiresAt; }
+
+    public Integer getMaxUnits() { return maxUnits; }
+    public void setMaxUnits(Integer maxUnits) { this.maxUnits = maxUnits; }
+
+    public boolean isLicenseActiveAt(Instant instant) {
+        if (!Boolean.TRUE.equals(this.active)) {
+            return false;
+        }
+        SubscriptionStatus status = this.subscriptionStatus != null ? this.subscriptionStatus : SubscriptionStatus.ACTIVE;
+        if (status == SubscriptionStatus.SUSPENDED || status == SubscriptionStatus.EXPIRED) {
+            return false;
+        }
+        return this.licenseExpiresAt == null || this.licenseExpiresAt.isAfter(instant);
+    }
+
+    public SubscriptionStatus effectiveSubscriptionStatus(Instant instant) {
+        SubscriptionStatus status = this.subscriptionStatus != null ? this.subscriptionStatus : SubscriptionStatus.ACTIVE;
+        if (!Boolean.TRUE.equals(this.active) || status == SubscriptionStatus.SUSPENDED) {
+            return SubscriptionStatus.SUSPENDED;
+        }
+        if (status == SubscriptionStatus.EXPIRED || (this.licenseExpiresAt != null && !this.licenseExpiresAt.isAfter(instant))) {
+            return SubscriptionStatus.EXPIRED;
+        }
+        return status;
+    }
 
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }

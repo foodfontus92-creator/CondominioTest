@@ -1,7 +1,7 @@
 import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 import { Client } from '@stomp/stompjs';
 import { useQueryClient } from '@tanstack/react-query';
-import { ensureFreshAccessToken } from '../api/client';
+import { ensureFreshAccessToken, resolveWsBrokerUrl } from '../api/client';
 import type { Device, DeviceLiveEvent } from '../api/types';
 import { useTenant } from '../context/TenantContext';
 import { useToast } from '../context/ToastContext';
@@ -60,10 +60,9 @@ export function LiveFeedProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!condoId) return;
-    const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
 
     const client: Client = new Client({
-      brokerURL: `${proto}://${window.location.host}/ws/intercom`,
+      brokerURL: resolveWsBrokerUrl(),
       reconnectDelay: 5000,
       heartbeatIncoming: 0,
       heartbeatOutgoing: 0,

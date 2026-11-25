@@ -1,5 +1,6 @@
 package com.accesolibre.app.data.remote
 
+import com.accesolibre.app.BuildConfig
 import com.accesolibre.app.data.local.SecureStorage
 import com.google.gson.Gson
 import okhttp3.Authenticator
@@ -15,6 +16,14 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.io.IOException
 import java.util.concurrent.TimeUnit
+
+class LicenseSuspendedAppException(message: String) : Exception(message)
+
+fun isLicenseErrorResponse(httpCode: Int, apiErrorCode: String?): Boolean =
+    httpCode == 402 || (httpCode == 403 && apiErrorCode == "LICENSE_SUSPENDED_OR_EXPIRED")
+
+fun formatLicenseSuspendedMessage(ofCommunity: String = "del condominio"): String =
+    "El servicio $ofCommunity se encuentra temporalmente suspendido por licencia. Contacta a la administración."
 
 class NetworkFactory(
     private val storage: SecureStorage,
@@ -128,7 +137,7 @@ class NetworkFactory(
         .build()
 
     val api: AccesoLibreApi = Retrofit.Builder()
-        .baseUrl("http://localhost:8080/")
+        .baseUrl(BuildConfig.DEFAULT_API_BASE_URL)
         .client(okHttpClient)
         .addConverterFactory(GsonConverterFactory.create(gson))
         .build()
@@ -159,5 +168,23 @@ class NetworkFactory(
             !dto?.code.isNullOrBlank() -> dto!!.code!!
             else -> "$fallback (HTTP ${response.code()})"
         }
+    }
+
+    fun <T> extractTypedError(
+        response: retrofit2.Response<T>,
+        fallback: String,
+        ofCommunity: String = "del condominio",
+    ): Throwable {
+        val raw = runCatching { response.errorBody()?.string() }.getOrNull()
+        val dto = raw?.let { runCatching { gson.fromJson(it, ApiErrorDto::class.java) }.getOrNull() }
+        if (isLicenseErrorResponse(response.code(), dto?.code)) {
+            return LicenseSuspendedAppException(formatLicenseSuspendedMessage(ofCommunity))
+        }
+        val msg = when {
+            !dto?.message.isNullOrBlank() -> dto!!.message!!
+            !dto?.code.isNullOrBlank() -> dto!!.code!!
+            else -> "$fallback (HTTP ${response.code()})"
+        }
+        return IllegalStateException(msg)
     }
 }
