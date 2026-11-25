@@ -314,6 +314,9 @@ Sensor magnético (Reed Switch): contacto cerrado = portón cerrado. Si permanec
 ## 7. Contratos de API REST, WebSocket STOMP y Seguridad de Sesión
 
 - **Base URL Local:** `http://<LAN_HOST>/api/v1` (proxeada por `web-admin` Nginx hacia `backend:8080`).
+- **Configuración Inicial (Initial Setup Wizard):**
+  - `GET /api/v1/setup/status` (público): retorna `{"initialized": boolean}` verificando si existe al menos un usuario en la tabla `users`.
+  - `POST /api/v1/setup/initialize` (público únicamente mientras no existan usuarios): crea el primer condominio (generando `hmac_secret` aleatorio criptográficamente seguro de 64 caracteres hexadecimales) y el primer usuario `SUPER_ADMIN` con contraseña cifrada vía `PasswordEncoder`. Si ya existe al menos un usuario en `users`, rechaza cualquier petición con HTTP `403 Forbidden` (`El sistema ya fue inicializado`).
 - **Autenticación de Usuarios (Web Admin y App Android):**
   - `POST /api/v1/auth/login` emite `accessToken` + `refreshToken` firmados con `JWT_SECRET` (exclusivo para clientes HTTP/WS; **nunca** utilizado en códigos QR). Los Refresh Tokens se almacenan hasheados (SHA-256) en PostgreSQL (`refresh_tokens`) con rotación y revocación real.
   - `POST /api/v1/auth/refresh`, `POST /api/v1/auth/logout`, `GET /api/v1/auth/me`.

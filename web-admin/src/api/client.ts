@@ -18,14 +18,14 @@ export class ApiError extends Error {
 
 export const AUTH_LOGOUT_EVENT = 'auth:logout';
 
-const AUTH_PATHS = ['/auth/login', '/auth/refresh'];
-const isAuthPath = (url?: string) => !!url && AUTH_PATHS.some((p) => url.endsWith(p));
+const PUBLIC_PATHS = ['/auth/login', '/auth/refresh', '/setup/status', '/setup/initialize'];
+const isPublicPath = (url?: string) => !!url && PUBLIC_PATHS.some((p) => url.endsWith(p));
 
 export const api = axios.create({ baseURL: '/api/v1', timeout: 20000 });
 
 api.interceptors.request.use((config) => {
   const token = tokenStore.access();
-  if (token && !isAuthPath(config.url)) {
+  if (token && !isPublicPath(config.url)) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
@@ -82,7 +82,7 @@ api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const original = error.config as Retriable | undefined;
-    if (error.response?.status === 401 && original && !original._retry && !isAuthPath(original.url)) {
+    if (error.response?.status === 401 && original && !original._retry && !isPublicPath(original.url)) {
       original._retry = true;
       const token = await refreshAccessToken();
       if (token) {

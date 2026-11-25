@@ -1,10 +1,19 @@
 import { FormEvent, useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
+
+interface LoginLocationState {
+  condoCode?: string;
+  setupCompleted?: boolean;
+}
 
 export default function LoginPage() {
   const { user, login } = useAuth();
-  const [condoCode, setCondoCode] = useState(() => localStorage.getItem('accesolibre.admin.lastCondoCode') ?? '');
+  const location = useLocation();
+  const locationState = (location.state as LoginLocationState | null) ?? null;
+  const [condoCode, setCondoCode] = useState(
+    () => locationState?.condoCode ?? localStorage.getItem('accesolibre.admin.lastCondoCode') ?? '',
+  );
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -36,6 +45,12 @@ export default function LoginPage() {
           <h1 className="text-2xl font-bold text-slate-900">AccesoLibre</h1>
           <p className="text-sm text-slate-500">Panel administrativo del condominio</p>
         </div>
+
+        {locationState?.setupCompleted && (
+          <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
+            Servidor inicializado correctamente. Inicia sesión con tu cuenta de administrador.
+          </div>
+        )}
 
         <div>
           <label className="label" htmlFor="condo">Código del condominio</label>

@@ -1,3 +1,4 @@
+com\accesolibre\service\GeofenceServiceTest.class
+com\accesolibre\service\SetupServiceTest.class
 com\accesolibre\mqtt\MqttTopicBuilderTest.class
 com\accesolibre\service\CompactQrCryptoServiceTest.class
-com\accesolibre\service\GeofenceServiceTest.class

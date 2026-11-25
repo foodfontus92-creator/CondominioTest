@@ -8,6 +8,7 @@ U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\controller\AuthC
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\controller\CondominiumController.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\controller\IntercomController.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\controller\IotDeviceController.java
+U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\controller\SetupController.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\controller\UnitController.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\controller\UserController.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\domain\entity\AccessLog.java
@@ -52,6 +53,9 @@ U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\qr\RegisterO
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\qr\UnitSecretResponse.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\qr\ValidateQrRequest.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\qr\ValidateQrResponse.java
+U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\setup\SetupInitializeRequest.java
+U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\setup\SetupInitializeResponse.java
+U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\setup\SetupStatusResponse.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\unit\CreateUnitRequest.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\unit\UnitResponse.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\unit\UpdateUnitRequest.java
@@ -92,5 +96,6 @@ U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\service\Condomin
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\service\GeofenceService.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\service\IntercomService.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\service\IotDeviceService.java
+U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\service\SetupService.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\service\UnitService.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\service\UserService.java

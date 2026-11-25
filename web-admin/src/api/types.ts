@@ -232,3 +232,26 @@ export interface DeviceLiveEvent {
   occurredAt: string;
   payload: Record<string, unknown>;
 }
+
+export interface SetupStatusResponse {
+  initialized: boolean;
+}
+
+export interface SetupInitializeBody {
+  condoCode: string;
+  condoName: string;
+  address?: string;
+  timezone?: string;
+  adminFullName: string;
+  adminEmail: string;
+  adminPassword: string;
+}
+
+export interface SetupInitializeResponse {
+  initialized: boolean;
+  condominiumId: string;
+  condoCode: string;
+  condoName: string;
+  adminUserId: string;
+  adminEmail: string;
+}

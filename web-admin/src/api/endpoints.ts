@@ -11,12 +11,21 @@ import type {
   CreateUserBody,
   Device,
   Page,
+  SetupInitializeBody,
+  SetupInitializeResponse,
+  SetupStatusResponse,
   UpdateCondominiumBody,
   UpdateDeviceBody,
   UpdateUnitBody,
   UpdateUserBody,
   Unit,
 } from './types';
+
+export const setupApi = {
+  status: () => api.get<SetupStatusResponse>('/setup/status').then((r) => r.data),
+  initialize: (body: SetupInitializeBody) =>
+    api.post<SetupInitializeResponse>('/setup/initialize', body).then((r) => r.data),
+};
 
 export const authApi = {
   login: (condominiumCode: string, email: string, password: string) =>
