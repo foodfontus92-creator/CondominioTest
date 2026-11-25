@@ -1,8 +1,12 @@
 package com.accesolibre.controller;
 
+import com.accesolibre.dto.unit.CreateUnitActivationCodeRequest;
 import com.accesolibre.dto.unit.CreateUnitRequest;
+import com.accesolibre.dto.unit.RevokeUnitResidentsResponse;
+import com.accesolibre.dto.unit.UnitActivationCodeResponse;
 import com.accesolibre.dto.unit.UnitResponse;
 import com.accesolibre.dto.unit.UpdateUnitRequest;
+import com.accesolibre.service.UnitActivationService;
 import com.accesolibre.service.UnitService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -23,9 +27,11 @@ import java.util.UUID;
 public class UnitController {
 
     private final UnitService unitService;
+    private final UnitActivationService unitActivationService;
 
-    public UnitController(UnitService unitService) {
+    public UnitController(UnitService unitService, UnitActivationService unitActivationService) {
         this.unitService = unitService;
+        this.unitActivationService = unitActivationService;
     }
 
     @GetMapping
@@ -53,5 +59,23 @@ public class UnitController {
             @Valid @RequestBody UpdateUnitRequest request
     ) {
         return ResponseEntity.ok(unitService.updateUnit(condoId, unitId, request));
+    }
+
+    @PostMapping("/{unitId}/activation-codes")
+    public ResponseEntity<UnitActivationCodeResponse> createActivationCode(
+            @PathVariable UUID condoId,
+            @PathVariable UUID unitId,
+            @Valid @RequestBody(required = false) CreateUnitActivationCodeRequest request
+    ) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(unitActivationService.createActivationCode(condoId, unitId, request));
+    }
+
+    @PostMapping("/{unitId}/revoke-residents")
+    public ResponseEntity<RevokeUnitResidentsResponse> revokeResidents(
+            @PathVariable UUID condoId,
+            @PathVariable UUID unitId
+    ) {
+        return ResponseEntity.ok(unitActivationService.revokeResidents(condoId, unitId));
     }
 }

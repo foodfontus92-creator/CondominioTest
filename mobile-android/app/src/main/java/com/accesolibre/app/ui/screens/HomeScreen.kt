@@ -126,20 +126,22 @@ fun HomeScreen(
             title = "Abrir Portón",
             subtitle = if (hasGate) "Portón vehicular • Valida GPS" else "Sin portón vehicular registrado",
             loading = state.openingKind == DeviceKind.GATE,
-            enabled = state.openingKind == null,
+            enabled = hasGate && state.openingKind == null,
             containerColor = MaterialTheme.colorScheme.primary,
             onClick = { requestOpen(DeviceKind.GATE) },
         )
 
-        // Large Primary Button 2: Abrir Puerta Peatonal (Pedestrian Gate / Lobby Door)
-        QuickAccessButton(
-            title = "Abrir Puerta Peatonal",
-            subtitle = if (hasPedestrian) "Acceso peatonal • Valida GPS" else "Sin puerta peatonal registrada",
-            loading = state.openingKind == DeviceKind.PEDESTRIAN,
-            enabled = state.openingKind == null,
-            containerColor = MaterialTheme.colorScheme.secondary,
-            onClick = { requestOpen(DeviceKind.PEDESTRIAN) },
-        )
+        // Large Primary Button 2: Abrir Puerta Peatonal (shown only if condo has pedestrian/lobby door)
+        if (hasPedestrian) {
+            QuickAccessButton(
+                title = "Abrir Puerta Peatonal",
+                subtitle = "Acceso peatonal • Valida GPS",
+                loading = state.openingKind == DeviceKind.PEDESTRIAN,
+                enabled = state.openingKind == null,
+                containerColor = MaterialTheme.colorScheme.secondary,
+                onClick = { requestOpen(DeviceKind.PEDESTRIAN) },
+            )
+        }
 
         state.feedbackSuccess?.let { msg ->
             Card(

@@ -18,6 +18,7 @@ U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\domain\entity\In
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\domain\entity\IotDevice.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\domain\entity\RefreshToken.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\domain\entity\Unit.java
+U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\domain\entity\UnitActivationCode.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\domain\entity\User.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\domain\enums\AccessMethod.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\domain\enums\AccessResult.java
@@ -30,6 +31,7 @@ U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\domain\enums\Use
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\access\AccessLogResponse.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\access\RemoteOpenRequest.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\access\RemoteOpenResponse.java
+U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\auth\ActivateUnitRequest.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\auth\AuthResponse.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\auth\LoginRequest.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\auth\LogoutRequest.java
@@ -56,7 +58,10 @@ U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\qr\ValidateQ
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\setup\SetupInitializeRequest.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\setup\SetupInitializeResponse.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\setup\SetupStatusResponse.java
+U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\unit\CreateUnitActivationCodeRequest.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\unit\CreateUnitRequest.java
+U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\unit\RevokeUnitResidentsResponse.java
+U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\unit\UnitActivationCodeResponse.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\unit\UnitResponse.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\unit\UpdateUnitRequest.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\user\CreateUserRequest.java
@@ -80,6 +85,7 @@ U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\repository\Condo
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\repository\IntercomCallRepository.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\repository\IotDeviceRepository.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\repository\RefreshTokenRepository.java
+U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\repository\UnitActivationCodeRepository.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\repository\UnitRepository.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\repository\UserRepository.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\security\AuthenticatedUser.java
@@ -97,5 +103,6 @@ U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\service\Geofence
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\service\IntercomService.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\service\IotDeviceService.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\service\SetupService.java
+U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\service\UnitActivationService.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\service\UnitService.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\service\UserService.java

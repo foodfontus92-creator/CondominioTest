@@ -12,6 +12,7 @@ import { errMsg } from '../lib/hooks';
 
 export default function ResidentsPage() {
   const { condoId } = useTenant();
+  const { user: currentUser } = useAuth();
   const users = useUsers();
   const units = useUnits();
   const toast = useToast();
@@ -101,9 +102,17 @@ export default function ResidentsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {rows.map((u) => (
+              {rows.map((u) => {
+                const isSelf = u.id === currentUser?.id;
+                return (
                 <tr key={u.id} className={u.blocked ? 'bg-red-50/50' : ''}>
-                  <td className="td font-semibold">{u.fullName}{u.phone && <div className="text-xs font-normal text-slate-500">{u.phone}</div>}</td>
+                  <td className="td font-semibold">
+                    <div className="flex items-center gap-2">
+                      <span>{u.fullName}</span>
+                      {isSelf && <Badge tone="slate">Tú</Badge>}
+                    </div>
+                    {u.phone && <div className="text-xs font-normal text-slate-500">{u.phone}</div>}
+                  </td>
                   <td className="td">{u.email}</td>
                   <td className="td"><Badge tone={u.role === 'RESIDENT' ? 'slate' : 'blue'}>{roleLabel[u.role]}</Badge></td>
                   <td className="td">{u.unitId ? unitName.get(u.unitId) ?? '—' : '—'}</td>
@@ -117,17 +126,22 @@ export default function ResidentsPage() {
                   </td>
                   <td className="td">
                     <div className="flex justify-end gap-2">
-                      <button className={u.blocked ? 'btn-secondary btn-sm' : 'btn-warn btn-sm'} disabled={update.isPending} onClick={() => toggleBlock(u)}>
-                        {u.blocked ? 'Desbloquear' : 'Bloquear'}
-                      </button>
+                      {!isSelf && (
+                        <button className={u.blocked ? 'btn-secondary btn-sm' : 'btn-warn btn-sm'} disabled={update.isPending} onClick={() => toggleBlock(u)}>
+                          {u.blocked ? 'Desbloquear' : 'Bloquear'}
+                        </button>
+                      )}
                       <button className="btn-secondary btn-sm" onClick={() => setEditing(u)}>Editar</button>
-                      <button className="btn-ghost btn-sm" disabled={update.isPending} onClick={() => toggleActive(u)}>
-                        {u.active ? 'Desactivar' : 'Reactivar'}
-                      </button>
+                      {!isSelf && (
+                        <button className="btn-ghost btn-sm" disabled={update.isPending} onClick={() => toggleActive(u)}>
+                          {u.active ? 'Desactivar' : 'Reactivar'}
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         )}

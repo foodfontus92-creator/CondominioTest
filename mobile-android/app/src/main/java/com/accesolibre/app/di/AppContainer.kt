@@ -17,6 +17,7 @@ import com.accesolibre.app.domain.repository.IntercomRepository
 import com.accesolibre.app.domain.repository.LocationSource
 import com.accesolibre.app.domain.repository.PassRepository
 import com.accesolibre.app.domain.repository.SettingsRepository
+import com.accesolibre.app.domain.usecase.ActivateUnitUseCase
 import com.accesolibre.app.domain.usecase.GeneratePassUseCase
 import com.accesolibre.app.domain.usecase.LoginUseCase
 import com.accesolibre.app.domain.usecase.OpenAccessUseCase
@@ -51,6 +52,7 @@ class AppContainer(context: Context) {
     val intercomRepository: IntercomRepository = IntercomRepositoryImpl(secureStorage, networkFactory)
 
     val loginUseCase = LoginUseCase(authRepository)
+    val activateUnitUseCase = ActivateUnitUseCase(authRepository)
     val openAccessUseCase = OpenAccessUseCase(locationSource, accessRepository)
     val generatePassUseCase = GeneratePassUseCase(authRepository, passRepository)
     val syncPendingPassesUseCase = SyncPendingPassesUseCase(passRepository)

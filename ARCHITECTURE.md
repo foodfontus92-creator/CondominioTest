@@ -319,18 +319,19 @@ Sensor magnético (Reed Switch): contacto cerrado = portón cerrado. Si permanec
   - `POST /api/v1/setup/initialize` (público únicamente mientras no existan usuarios): crea el primer condominio (generando `hmac_secret` aleatorio criptográficamente seguro de 64 caracteres hexadecimales) y el primer usuario `SUPER_ADMIN` con contraseña cifrada vía `PasswordEncoder`. Si ya existe al menos un usuario en `users`, rechaza cualquier petición con HTTP `403 Forbidden` (`El sistema ya fue inicializado`).
 - **Autenticación de Usuarios (Web Admin y App Android):**
   - `POST /api/v1/auth/login` emite `accessToken` + `refreshToken` firmados con `JWT_SECRET` (exclusivo para clientes HTTP/WS; **nunca** utilizado en códigos QR). Los Refresh Tokens se almacenan hasheados (SHA-256) en PostgreSQL (`refresh_tokens`) con rotación y revocación real.
+  - `POST /api/v1/auth/activate-unit` (público): auto-registro de residente mediante código familiar (`<CONDO_CODE>-<UNIT_NUMBER>-<4_DIGITOS>`), validando vigencia y cupos (`used_count < max_uses`) y devolviendo tokens JWT estándar.
   - `POST /api/v1/auth/refresh`, `POST /api/v1/auth/logout`, `GET /api/v1/auth/me`.
   - Header estándar: `Authorization: Bearer <accessToken>`.
   - Roles soportados: `SUPER_ADMIN`, `CONDO_ADMIN`, `RESIDENT`.
 - **Recursos Principales (Multi-Tenant):**
   - `/api/v1/condominiums` — Alta/gestión de condominios, coordenadas de geofencing y rotación de `hmac_secret`.
-  - `/api/v1/condos/{condoId}/units` — Gestión de unidades funcionales, estado de bloqueo (`blocked`), secreto derivado (`unit_secret`) y extensiones de intercomunicador.
+  - `/api/v1/condos/{condoId}/units` — Gestión de unidades funcionales, estado de bloqueo (`blocked`), secreto derivado (`unit_secret`), extensiones de intercomunicador, emisión de códigos familiares (`POST .../{unitId}/activation-codes`) y revocación masiva por cambio de arrendatario (`POST .../{unitId}/revoke-residents`).
   - `/api/v1/condos/{condoId}/users` — Gestión de administradores y residentes (incluyendo bloqueo/desbloqueo).
   - `/api/v1/condos/{condoId}/devices` — Registro de dispositivos ESP32, token QR público de citofonía, estado en vivo y comandos (`POST .../sync-config`).
   - `GET /api/v1/access-passes/unit-secret` — Entrega al residente autenticado su `unit_secret` derivado para emisión de QR offline.
   - `/api/v1/condos/{condoId}/access-passes` — Generación, registro offline (`/register`), validación HMAC (`/validate`), consulta y revocación (`/{passId}/revoke`) de pases QR compactos offline.
   - `POST /api/v1/access/open` — Apertura remota con verificación de bloqueo (usuario/unidad), validación GPS por geofencing (Haversine contra el radio del condominio), publicación MQTT en `condo/{condoId}/device/{deviceId}/command` y registro en `access_logs`.
-  - `/api/v1/condos/{condoId}/access-logs` — Auditoría paginada (más reciente primero). Filtros opcionales combinables: `unitId`, `deviceId`, `result`, `method` (repetible o separado por comas: `REMOTE_APP`, `QR_ONLINE`, `QR_OFFLINE`, `INTERCOM_UNLOCK`, `ADMIN_OVERRIDE`, `MANUAL_EXIT`), `from` (inclusive) y `to` (exclusivo) como instantes ISO-8601 UTC. Los residentes siempre quedan limitados a su propia unidad.
+  - `/api/v1/condos/{condoId}/access-logs` — Auditoría paginada (más reciente primero). Filtros opcionales combinables: `unitId`, `deviceId`, `result`, `method` (repetible o separado por comas: `REMOTE_APP`, `QR_ONLINE`, `QR_OFFLINE`, `INTERCOM_UNLOCK`, `ADMIN_OVERRIDE`, `MANUAL_EXIT`), `from` (inclusive) y `to` (inclusive) como instantes ISO-8601 UTC. Los residentes siempre quedan limitados a su propia unidad.
   - `/api/v1/public/intercom/door/{publicQrToken}` y `POST /api/v1/public/intercom/ring` — Flujo público para visitantes escaneando el QR físico de la puerta.
   - `/api/v1/condos/{condoId}/intercom-calls` — Historial y acciones del residente/admin (`answer`, `unlock`, `reject`, `end`).
 - **WebSocket STOMP Local (`/ws/intercom`):**
@@ -357,6 +358,7 @@ Esquema definido en [`backend/src/main/resources/db/migration/V1__init_schema.sq
 | `access_passes` | Pases QR compactos offline emitidos y su ciclo de vida | `condominium_id` + FKs compuestas a `units` y `users` |
 | `access_logs` | Bitácora inmutable de accesos (online y sincronizados offline) | `condominium_id` + FKs compuestas opcionales |
 | `intercom_calls` | Registro y señalización LAN de llamadas portero-residente | `condominium_id` + FKs compuestas a `iot_devices`, `units` y `users` |
+| `unit_activation_codes` | Códigos de auto-registro familiar por unidad (V3) | `condominium_id` + FK compuesta a `units` |
 
 ---
 

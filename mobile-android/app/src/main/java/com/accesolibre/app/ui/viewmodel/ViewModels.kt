@@ -16,6 +16,7 @@ import com.accesolibre.app.domain.repository.AuthRepository
 import com.accesolibre.app.domain.repository.IntercomRepository
 import com.accesolibre.app.domain.repository.PassRepository
 import com.accesolibre.app.domain.repository.SettingsRepository
+import com.accesolibre.app.domain.usecase.ActivateUnitUseCase
 import com.accesolibre.app.domain.usecase.GeneratePassUseCase
 import com.accesolibre.app.domain.usecase.LoginUseCase
 import com.accesolibre.app.domain.usecase.OpenAccessUseCase
@@ -120,6 +121,47 @@ class LoginViewModel(
                 .onFailure { err ->
                     _state.update {
                         it.copy(loading = false, errorMessage = err.message ?: "Error al iniciar sesión")
+                    }
+                }
+        }
+    }
+}
+
+// ---- 2b. Activate Unit ViewModel -------------------------------------------
+data class ActivateUnitUiState(
+    val activationCode: String = "",
+    val fullName: String = "",
+    val email: String = "",
+    val phone: String = "",
+    val password: String = "",
+    val loading: Boolean = false,
+    val errorMessage: String? = null,
+)
+
+class ActivateUnitViewModel(
+    private val activateUnitUseCase: ActivateUnitUseCase,
+) : ViewModel() {
+    private val _state = MutableStateFlow(ActivateUnitUiState())
+    val state: StateFlow<ActivateUnitUiState> = _state.asStateFlow()
+
+    fun onCodeChange(v: String) = _state.update { it.copy(activationCode = v.uppercase(), errorMessage = null) }
+    fun onFullNameChange(v: String) = _state.update { it.copy(fullName = v, errorMessage = null) }
+    fun onEmailChange(v: String) = _state.update { it.copy(email = v, errorMessage = null) }
+    fun onPhoneChange(v: String) = _state.update { it.copy(phone = v, errorMessage = null) }
+    fun onPasswordChange(v: String) = _state.update { it.copy(password = v, errorMessage = null) }
+
+    fun submit(onSuccess: () -> Unit) {
+        val s = _state.value
+        viewModelScope.launch {
+            _state.update { it.copy(loading = true, errorMessage = null) }
+            activateUnitUseCase(s.activationCode, s.fullName, s.email, s.phone, s.password)
+                .onSuccess {
+                    _state.update { it.copy(loading = false, password = "") }
+                    onSuccess()
+                }
+                .onFailure { err ->
+                    _state.update {
+                        it.copy(loading = false, errorMessage = err.message ?: "No se pudo activar el departamento")
                     }
                 }
         }

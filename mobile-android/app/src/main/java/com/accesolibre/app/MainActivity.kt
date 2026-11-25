@@ -36,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.accesolibre.app.di.AppContainer
+import com.accesolibre.app.ui.screens.ActivateUnitScreen
 import com.accesolibre.app.ui.screens.HistoryScreen
 import com.accesolibre.app.ui.screens.HomeScreen
 import com.accesolibre.app.ui.screens.IntercomScreen
@@ -43,6 +44,7 @@ import com.accesolibre.app.ui.screens.LoginScreen
 import com.accesolibre.app.ui.screens.QrGeneratorScreen
 import com.accesolibre.app.ui.screens.ServerConfigScreen
 import com.accesolibre.app.ui.theme.AccesoLibreTheme
+import com.accesolibre.app.ui.viewmodel.ActivateUnitViewModel
 import com.accesolibre.app.ui.viewmodel.HistoryViewModel
 import com.accesolibre.app.ui.viewmodel.HomeViewModel
 import com.accesolibre.app.ui.viewmodel.IntercomViewModel
@@ -77,6 +79,7 @@ private fun AccesoLibreRoot(container: AppContainer) {
     val serverUrl by container.settingsRepository.serverUrl.collectAsStateWithLifecycle()
     val session by container.authRepository.session.collectAsStateWithLifecycle()
     var editingServer by remember { mutableStateOf(false) }
+    var activatingUnit by remember { mutableStateOf(false) }
 
     when {
         serverUrl.isNullOrBlank() || editingServer -> {
@@ -88,6 +91,17 @@ private fun AccesoLibreRoot(container: AppContainer) {
                 onSaved = { editingServer = false },
             )
         }
+        session == null && activatingUnit -> {
+            val vm: ActivateUnitViewModel = viewModel(
+                factory = simpleFactory { ActivateUnitViewModel(container.activateUnitUseCase) }
+            )
+            ActivateUnitScreen(
+                serverUrl = serverUrl.orEmpty(),
+                viewModel = vm,
+                onActivated = { activatingUnit = false },
+                onBackToLogin = { activatingUnit = false },
+            )
+        }
         session == null -> {
             val vm: LoginViewModel = viewModel(
                 factory = simpleFactory { LoginViewModel(container.loginUseCase) }
@@ -96,6 +110,7 @@ private fun AccesoLibreRoot(container: AppContainer) {
                 serverUrl = serverUrl.orEmpty(),
                 viewModel = vm,
                 onLoginSuccess = { /* session StateFlow transitions automatically */ },
+                onActivateUnit = { activatingUnit = true },
                 onChangeServer = { editingServer = true },
             )
         }

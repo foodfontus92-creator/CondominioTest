@@ -1,17 +1,18 @@
 import { FormEvent, useMemo, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { unitApi } from '../api/endpoints';
-import type { Unit } from '../api/types';
+import type { Unit, UnitActivationCodeResponse } from '../api/types';
 import { Badge, EmptyState, ErrorBox, Field, Modal, PageHeader, Spinner } from '../components/ui';
 import ReasonModal from '../components/ReasonModal';
 import { useTenant, useUnits, useUsers } from '../context/TenantContext';
 import { useToast } from '../context/ToastContext';
+import { formatDateTime } from '../lib/format';
 import { errMsg } from '../lib/hooks';
 
 type StatusFilter = 'all' | 'blocked' | 'inactive';
 
 export default function UnitsPage() {
-  const { condoId } = useTenant();
+  const { condoId, condo } = useTenant();
   const units = useUnits();
   const users = useUsers();
   const toast = useToast();
@@ -21,13 +22,15 @@ export default function UnitsPage() {
   const [filter, setFilter] = useState<StatusFilter>('all');
   const [editing, setEditing] = useState<Unit | 'new' | null>(null);
   const [blocking, setBlocking] = useState<Unit | null>(null);
+  const [familyCodeUnit, setFamilyCodeUnit] = useState<Unit | null>(null);
+  const [turnoverUnit, setTurnoverUnit] = useState<Unit | null>(null);
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['units', condoId] });
 
   const residentsByUnit = useMemo(() => {
     const map = new Map<string, string[]>();
     for (const u of users.data ?? []) {
-      if (u.unitId && u.role === 'RESIDENT') {
+      if (u.unitId && u.role === 'RESIDENT' && u.active) {
         map.set(u.unitId, [...(map.get(u.unitId) ?? []), u.fullName]);
       }
     }
@@ -131,7 +134,22 @@ export default function UnitsPage() {
                     {u.blocked && u.blockReason && <div className="mt-1 text-xs text-red-700">{u.blockReason}</div>}
                   </td>
                   <td className="td">
-                    <div className="flex justify-end gap-2">
+                    <div className="flex flex-wrap justify-end gap-2">
+                      <button
+                        className="btn-primary btn-sm"
+                        disabled={!u.active}
+                        title={!u.active ? 'Reactiva la unidad para generar códigos' : undefined}
+                        onClick={() => setFamilyCodeUnit(u)}
+                      >
+                        Código familia
+                      </button>
+                      <button
+                        className="btn-secondary btn-sm"
+                        disabled={update.isPending}
+                        onClick={() => setTurnoverUnit(u)}
+                      >
+                        Nueva familia
+                      </button>
                       <button className={u.blocked ? 'btn-secondary btn-sm' : 'btn-warn btn-sm'}
                         disabled={update.isPending} onClick={() => toggleBlock(u)}>
                         {u.blocked ? 'Desbloquear' : 'Bloquear'}
@@ -173,6 +191,26 @@ export default function UnitsPage() {
               { onSuccess: () => toast.push('success', `Unidad ${blocking.unitNumber} bloqueada`) },
             )
           }
+        />
+      )}
+
+      {familyCodeUnit && (
+        <FamilyCodeModal
+          unit={familyCodeUnit}
+          condoName={condo?.name ?? 'Condominio'}
+          onClose={() => setFamilyCodeUnit(null)}
+        />
+      )}
+
+      {turnoverUnit && (
+        <TurnoverResidentsModal
+          unit={turnoverUnit}
+          onClose={() => setTurnoverUnit(null)}
+          onCompleted={() => {
+            setTurnoverUnit(null);
+            void queryClient.invalidateQueries({ queryKey: ['users', condoId] });
+            void refresh();
+          }}
         />
       )}
     </div>
@@ -243,6 +281,189 @@ function UnitFormModal({ unit, onClose, onSaved }: { unit: Unit | null; onClose:
           <input className="input" value={ext} onChange={(e) => setExt(e.target.value)} maxLength={32} />
         </Field>
       </form>
+    </Modal>
+  );
+}
+
+function FamilyCodeModal({
+  unit,
+  condoName,
+  onClose,
+}: {
+  unit: Unit;
+  condoName: string;
+  onClose: () => void;
+}) {
+  const { condoId } = useTenant();
+  const toast = useToast();
+  const [maxUses, setMaxUses] = useState(4);
+  const [expiresInHours, setExpiresInHours] = useState(48);
+  const [generated, setGenerated] = useState<UnitActivationCodeResponse | null>(null);
+
+  const createCode = useMutation({
+    mutationFn: () =>
+      unitApi.createActivationCode(condoId, unit.id, {
+        maxUses,
+        expiresInHours,
+        revokePrevious: true,
+      }),
+    onSuccess: (res) => {
+      setGenerated(res);
+      toast.push('success', `Código familiar ${res.code} generado`);
+    },
+    onError: (e) => toast.push('error', errMsg(e)),
+  });
+
+  const copyWhatsAppInvite = async () => {
+    if (!generated) return;
+    const serverOrigin = window.location.origin;
+    const message = [
+      `¡Hola! Bienvenidos a *${condoName}* (Unidad *${unit.unitNumber}*).`,
+      '',
+      'Para activar el acceso autónomo en tu teléfono:',
+      '1. Abre la app *AccesoLibre* en Android.',
+      `2. En servidor local ingresa: ${serverOrigin}`,
+      '3. Toca *"Activar departamento con código"* y completa tus datos.',
+      '',
+      `🔑 Código familiar: *${generated.code}*`,
+      `👥 Cupos disponibles: ${generated.maxUses} integrantes`,
+      `⏳ Vigente hasta: ${formatDateTime(generated.expiresAt)}`,
+    ].join('\n');
+
+    try {
+      await navigator.clipboard.writeText(message);
+      toast.push('success', 'Invitación de WhatsApp copiada al portapapeles');
+    } catch {
+      toast.push('error', 'No se pudo acceder al portapapeles del navegador');
+    }
+  };
+
+  return (
+    <Modal
+      title={`Código familia · Unidad ${unit.unitNumber}`}
+      onClose={onClose}
+      footer={
+        <>
+          <button className="btn-secondary" onClick={onClose}>Cerrar</button>
+          {!generated ? (
+            <button
+              className="btn-primary"
+              disabled={createCode.isPending}
+              onClick={() => createCode.mutate()}
+            >
+              {createCode.isPending ? 'Generando…' : 'Generar código'}
+            </button>
+          ) : (
+            <button className="btn-primary" onClick={() => void copyWhatsAppInvite()}>
+              Copiar invitación para WhatsApp
+            </button>
+          )}
+        </>
+      }
+    >
+      {!generated ? (
+        <div className="space-y-4">
+          <p className="text-sm text-slate-600">
+            Genera un código corto para que los integrantes de la unidad se registren solos desde la app Android.
+            Los códigos anteriores de esta unidad se desactivarán automáticamente.
+          </p>
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Límite de integrantes">
+              <select
+                className="input"
+                value={maxUses}
+                onChange={(e) => setMaxUses(Number(e.target.value))}
+              >
+                {Array.from({ length: 10 }, (_, idx) => idx + 1).map((n) => (
+                  <option key={n} value={n}>
+                    {n} {n === 1 ? 'integrante' : 'integrantes'}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Vigencia">
+              <select
+                className="input"
+                value={expiresInHours}
+                onChange={(e) => setExpiresInHours(Number(e.target.value))}
+              >
+                <option value={24}>24 horas</option>
+                <option value={48}>48 horas</option>
+                <option value={168}>7 días</option>
+              </select>
+            </Field>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <div className="rounded-xl border border-brand-200 bg-brand-50 p-4 text-center">
+            <div className="text-xs font-semibold uppercase tracking-wide text-brand-700">
+              Código de activación
+            </div>
+            <div className="mt-1 select-all font-mono text-2xl font-bold tracking-wider text-brand-900">
+              {generated.code}
+            </div>
+          </div>
+          <dl className="grid grid-cols-2 gap-2 text-sm">
+            <dt className="text-slate-500">Unidad</dt>
+            <dd className="font-medium">{generated.unitNumber}</dd>
+            <dt className="text-slate-500">Integrantes permitidos</dt>
+            <dd className="font-medium">{generated.maxUses}</dd>
+            <dt className="text-slate-500">Válido hasta</dt>
+            <dd className="font-medium">{formatDateTime(generated.expiresAt)}</dd>
+          </dl>
+        </div>
+      )}
+    </Modal>
+  );
+}
+
+function TurnoverResidentsModal({
+  unit,
+  onClose,
+  onCompleted,
+}: {
+  unit: Unit;
+  onClose: () => void;
+  onCompleted: () => void;
+}) {
+  const { condoId } = useTenant();
+  const toast = useToast();
+
+  const revoke = useMutation({
+    mutationFn: () => unitApi.revokeResidents(condoId, unit.id),
+    onSuccess: (res) => {
+      toast.push(
+        'success',
+        `Unidad ${res.unitNumber}: ${res.deactivatedResidents} residente(s) dado(s) de baja y ${res.invalidatedCodes} código(s) invalidado(s)`,
+      );
+      onCompleted();
+    },
+    onError: (e) => toast.push('error', errMsg(e)),
+  });
+
+  return (
+    <Modal
+      title={`Nueva familia · Unidad ${unit.unitNumber}`}
+      onClose={onClose}
+      footer={
+        <>
+          <button className="btn-secondary" onClick={onClose}>Cancelar</button>
+          <button
+            className="btn-danger"
+            disabled={revoke.isPending}
+            onClick={() => revoke.mutate()}
+          >
+            {revoke.isPending ? 'Procesando…' : 'Confirmar baja masiva'}
+          </button>
+        </>
+      }
+    >
+      <p className="text-sm text-slate-600">
+        Esta acción desactivará todas las cuentas de residentes actuales de la unidad{' '}
+        <strong>{unit.unitNumber}</strong>, revocará sus sesiones activas e invalidará cualquier código de activación
+        vigente antes de entregar el departamento a una nueva familia.
+      </p>
     </Modal>
   );
 }

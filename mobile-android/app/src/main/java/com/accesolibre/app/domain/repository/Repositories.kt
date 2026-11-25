@@ -22,6 +22,13 @@ interface SettingsRepository {
 interface AuthRepository {
     val session: StateFlow<Session?>
     suspend fun login(condominiumCode: String, email: String, password: String): Result<Session>
+    suspend fun activateUnit(
+        activationCode: String,
+        fullName: String,
+        email: String,
+        phone: String,
+        password: String,
+    ): Result<Session>
     suspend fun refreshUnitSecret(): Result<UnitSecret>
     fun unitSecret(): UnitSecret?
     suspend fun logout()

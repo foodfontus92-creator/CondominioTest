@@ -255,3 +255,30 @@ export interface SetupInitializeResponse {
   adminUserId: string;
   adminEmail: string;
 }
+
+export interface CreateActivationCodeBody {
+  maxUses?: number;
+  expiresInHours?: number;
+  revokePrevious?: boolean;
+}
+
+export interface UnitActivationCodeResponse {
+  id: string;
+  condominiumId: string;
+  condominiumName: string;
+  unitId: string;
+  unitNumber: string;
+  code: string;
+  maxUses: number;
+  usedCount: number;
+  expiresAt: string;
+  active: boolean;
+  createdAt: string;
+}
+
+export interface RevokeResidentsResponse {
+  unitId: string;
+  unitNumber: string;
+  deactivatedResidents: number;
+  invalidatedCodes: number;
+}

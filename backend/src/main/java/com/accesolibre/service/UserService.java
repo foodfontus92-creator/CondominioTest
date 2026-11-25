@@ -108,6 +108,10 @@ public class UserService {
     @Transactional
     public UserResponse updateUser(UUID condoId, UUID userId, UpdateUserRequest request) {
         AuthenticatedUser caller = tenantAccessGuard.requireCondoAdmin(condoId);
+        if (caller.userId().equals(userId)
+                && (Boolean.TRUE.equals(request.blocked()) || Boolean.FALSE.equals(request.active()))) {
+            throw new BadRequestException("No puedes bloquear ni desactivar tu propia cuenta");
+        }
         User user = userRepository.findByIdAndCondominiumId(userId, condoId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
 

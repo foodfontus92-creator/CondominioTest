@@ -36,6 +36,7 @@ class NetworkFactory(
         val original = chain.request()
         val path = original.url.encodedPath
         val skipAuth = path.endsWith("/auth/login") ||
+            path.endsWith("/auth/activate-unit") ||
             path.endsWith("/auth/refresh") ||
             path.endsWith("/actuator/health")
         val token = storage.accessToken
@@ -56,7 +57,10 @@ class NetworkFactory(
         override fun authenticate(route: Route?, response: Response): Request? {
             if (response.priorResponse != null) return null
             val path = response.request.url.encodedPath
-            if (path.endsWith("/auth/login") || path.endsWith("/auth/refresh")) return null
+            if (path.endsWith("/auth/login") ||
+                path.endsWith("/auth/activate-unit") ||
+                path.endsWith("/auth/refresh")
+            ) return null
 
             val refreshToken = storage.refreshToken ?: return null
             val baseUrl = storage.serverUrl?.trimEnd('/') ?: return null

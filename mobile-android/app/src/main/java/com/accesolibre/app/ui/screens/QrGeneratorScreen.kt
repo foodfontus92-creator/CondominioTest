@@ -5,6 +5,7 @@ import android.app.TimePickerDialog
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,8 +14,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
@@ -92,91 +93,99 @@ fun QrGeneratorScreen(viewModel: QrGeneratorViewModel) {
         DurationOption.CUSTOM -> customDateTime.atZone(ZoneId.systemDefault()).toInstant()
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(20.dp),
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(start = 20.dp, top = 20.dp, end = 20.dp, bottom = 100.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        Text(
-            text = "Pases QR Offline",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-        )
-        Text(
-            text = "Genera invitaciones firmadas con HMAC-SHA256 (< 120 caracteres) sin requerir internet.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Text(
+                    text = "Pases QR Offline",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    text = "Genera invitaciones firmadas con HMAC-SHA256 (< 120 caracteres) sin requerir internet.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
 
-        OutlinedTextField(
-            value = state.visitorName,
-            onValueChange = viewModel::onVisitorNameChange,
-            label = { Text("Nombre del visitante") },
-            placeholder = { Text("ej. Juan Pérez / Delivery") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-        )
+                OutlinedTextField(
+                    value = state.visitorName,
+                    onValueChange = viewModel::onVisitorNameChange,
+                    label = { Text("Nombre del visitante") },
+                    placeholder = { Text("ej. Juan Pérez / Delivery") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
 
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilterChip(
-                selected = durationOption == DurationOption.ONE_HOUR,
-                onClick = { durationOption = DurationOption.ONE_HOUR },
-                label = { Text("1 hora") },
-            )
-            FilterChip(
-                selected = durationOption == DurationOption.TWENTY_FOUR_HOURS,
-                onClick = { durationOption = DurationOption.TWENTY_FOUR_HOURS },
-                label = { Text("24 horas") },
-            )
-            FilterChip(
-                selected = durationOption == DurationOption.CUSTOM,
-                onClick = { openCustomPicker() },
-                leadingIcon = { Icon(Icons.Default.DateRange, contentDescription = null, modifier = Modifier.size(16.dp)) },
-                label = { Text("Fecha") },
-            )
-        }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(
+                        selected = durationOption == DurationOption.ONE_HOUR,
+                        onClick = { durationOption = DurationOption.ONE_HOUR },
+                        label = { Text("1 hora") },
+                    )
+                    FilterChip(
+                        selected = durationOption == DurationOption.TWENTY_FOUR_HOURS,
+                        onClick = { durationOption = DurationOption.TWENTY_FOUR_HOURS },
+                        label = { Text("24 horas") },
+                    )
+                    FilterChip(
+                        selected = durationOption == DurationOption.CUSTOM,
+                        onClick = { openCustomPicker() },
+                        leadingIcon = { Icon(Icons.Default.DateRange, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                        label = { Text("Fecha") },
+                    )
+                }
 
-        if (durationOption == DurationOption.CUSTOM) {
-            OutlinedButton(onClick = { openCustomPicker() }, modifier = Modifier.fillMaxWidth()) {
-                Text("Expira: ${customDateTime.format(formatter)} (cambiar)")
-            }
-        }
+                if (durationOption == DurationOption.CUSTOM) {
+                    OutlinedButton(onClick = { openCustomPicker() }, modifier = Modifier.fillMaxWidth()) {
+                        Text("Expira: ${customDateTime.format(formatter)} (cambiar)")
+                    }
+                }
 
-        Button(
-            onClick = { viewModel.generate(computeExpiration()) },
-            enabled = !state.generating,
-            modifier = Modifier.fillMaxWidth().height(50.dp),
-        ) {
-            Text(if (state.generating) "Generando..." else "Generar QR Offline")
-        }
+                Button(
+                    onClick = { viewModel.generate(computeExpiration()) },
+                    enabled = !state.generating,
+                    modifier = Modifier.fillMaxWidth().height(50.dp),
+                ) {
+                    Text(if (state.generating) "Generando..." else "Generar QR Offline")
+                }
 
-        state.errorMessage?.let { err ->
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
-                Text(err, color = MaterialTheme.colorScheme.onErrorContainer, modifier = Modifier.padding(12.dp))
-            }
-        }
-        state.infoMessage?.let { msg ->
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
-                Text(msg, color = MaterialTheme.colorScheme.onSecondaryContainer, modifier = Modifier.padding(12.dp))
+                state.errorMessage?.let { err ->
+                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
+                        Text(err, color = MaterialTheme.colorScheme.onErrorContainer, modifier = Modifier.padding(12.dp))
+                    }
+                }
+                state.infoMessage?.let { msg ->
+                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
+                        Text(msg, color = MaterialTheme.colorScheme.onSecondaryContainer, modifier = Modifier.padding(12.dp))
+                    }
+                }
             }
         }
 
         state.selectedPass?.let { pass ->
-            QrPreviewCard(pass = pass, formatter = formatter, onShare = { bmp ->
-                WhatsAppSharer.sharePassImage(context, pass, bmp)
-            })
+            item(key = "preview-${pass.passId}") {
+                QrPreviewCard(pass = pass, formatter = formatter, onShare = { bmp ->
+                    WhatsAppSharer.sharePassImage(context, pass, bmp)
+                })
+            }
         }
 
         if (passes.isNotEmpty()) {
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = "Invitaciones emitidas (${passes.size})",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-            )
-            passes.forEach { pass ->
+            item {
+                Column {
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = "Invitaciones emitidas (${passes.size})",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+            }
+            items(passes, key = { it.passId }) { pass ->
                 val expText = Instant.ofEpochMilli(pass.expiresAtMs).atZone(ZoneId.systemDefault()).format(formatter)
                 Card(
                     onClick = { viewModel.selectPass(pass) },

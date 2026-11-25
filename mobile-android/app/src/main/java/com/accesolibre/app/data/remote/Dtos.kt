@@ -25,6 +25,14 @@ data class LoginRequestDto(
     val password: String,
 )
 
+data class ActivateUnitRequestDto(
+    val activationCode: String,
+    val fullName: String,
+    val email: String,
+    val phone: String?,
+    val password: String,
+)
+
 data class RefreshTokenRequestDto(val refreshToken: String)
 data class LogoutRequestDto(val refreshToken: String)
 

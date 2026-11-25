@@ -5,6 +5,8 @@ import com.accesolibre.app.data.local.AccessLogEntity
 import com.accesolibre.app.data.local.PassDao
 import com.accesolibre.app.data.local.PassEntity
 import com.accesolibre.app.data.local.SecureStorage
+import com.accesolibre.app.data.remote.ActivateUnitRequestDto
+import com.accesolibre.app.data.remote.AuthResponseDto
 import com.accesolibre.app.data.remote.LoginRequestDto
 import com.accesolibre.app.data.remote.LogoutRequestDto
 import com.accesolibre.app.data.remote.NetworkFactory
@@ -83,28 +85,55 @@ class AuthRepositoryImpl(
                 if (!resp.isSuccessful || resp.body() == null) {
                     error(network.extractError(resp, "Credenciales inválidas"))
                 }
-                val body = resp.body()!!
-                storage.accessToken = body.accessToken
-                storage.refreshToken = body.refreshToken
-
-                val userSession = Session(
-                    userId = body.user.id,
-                    condominiumId = body.user.condominiumId,
-                    unitId = body.user.unitId,
-                    email = body.user.email,
-                    fullName = body.user.fullName,
-                    role = body.user.role,
-                )
-                storage.saveSession(userSession)
-                _session.value = userSession
-
-                // Immediately fetch & encrypt unit_secret so offline QR generation works right away
-                if (!userSession.unitId.isNullOrBlank()) {
-                    refreshUnitSecret()
-                }
-                userSession
+                persistAuthResponse(resp.body()!!)
             }
         }
+
+    override suspend fun activateUnit(
+        activationCode: String,
+        fullName: String,
+        email: String,
+        phone: String,
+        password: String,
+    ): Result<Session> = withContext(Dispatchers.IO) {
+        runCatching {
+            val resp = network.api.activateUnit(
+                ActivateUnitRequestDto(
+                    activationCode = activationCode,
+                    fullName = fullName,
+                    email = email,
+                    phone = phone.takeIf { it.isNotBlank() },
+                    password = password,
+                )
+            )
+            if (!resp.isSuccessful || resp.body() == null) {
+                error(network.extractError(resp, "No se pudo activar el departamento"))
+            }
+            persistAuthResponse(resp.body()!!)
+        }
+    }
+
+    private suspend fun persistAuthResponse(body: AuthResponseDto): Session {
+        storage.accessToken = body.accessToken
+        storage.refreshToken = body.refreshToken
+
+        val userSession = Session(
+            userId = body.user.id,
+            condominiumId = body.user.condominiumId,
+            unitId = body.user.unitId,
+            email = body.user.email,
+            fullName = body.user.fullName,
+            role = body.user.role,
+        )
+        storage.saveSession(userSession)
+        _session.value = userSession
+
+        // Immediately fetch & encrypt unit_secret so offline QR generation works right away
+        if (!userSession.unitId.isNullOrBlank()) {
+            refreshUnitSecret()
+        }
+        return userSession
+    }
 
     override suspend fun refreshUnitSecret(): Result<UnitSecret> = withContext(Dispatchers.IO) {
         runCatching {

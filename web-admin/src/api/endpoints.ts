@@ -5,15 +5,18 @@ import type {
   AppUser,
   AuthResponse,
   Condominium,
+  CreateActivationCodeBody,
   CreateCondominiumBody,
   CreateDeviceBody,
   CreateUnitBody,
   CreateUserBody,
   Device,
   Page,
+  RevokeResidentsResponse,
   SetupInitializeBody,
   SetupInitializeResponse,
   SetupStatusResponse,
+  UnitActivationCodeResponse,
   UpdateCondominiumBody,
   UpdateDeviceBody,
   UpdateUnitBody,
@@ -48,6 +51,10 @@ export const unitApi = {
     api.post<Unit>(`/condos/${condoId}/units`, body).then((r) => r.data),
   update: (condoId: string, unitId: string, body: UpdateUnitBody) =>
     api.patch<Unit>(`/condos/${condoId}/units/${unitId}`, body).then((r) => r.data),
+  createActivationCode: (condoId: string, unitId: string, body: CreateActivationCodeBody) =>
+    api.post<UnitActivationCodeResponse>(`/condos/${condoId}/units/${unitId}/activation-codes`, body).then((r) => r.data),
+  revokeResidents: (condoId: string, unitId: string) =>
+    api.post<RevokeResidentsResponse>(`/condos/${condoId}/units/${unitId}/revoke-residents`).then((r) => r.data),
 };
 
 export const userApi = {

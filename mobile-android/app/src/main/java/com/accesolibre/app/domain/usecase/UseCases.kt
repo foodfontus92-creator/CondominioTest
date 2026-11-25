@@ -20,6 +20,30 @@ class LoginUseCase(private val auth: AuthRepository) {
     }
 }
 
+class ActivateUnitUseCase(private val auth: AuthRepository) {
+    suspend operator fun invoke(
+        activationCode: String,
+        fullName: String,
+        email: String,
+        phone: String,
+        password: String,
+    ): Result<Session> {
+        if (activationCode.isBlank() || fullName.isBlank() || email.isBlank() || password.isBlank()) {
+            return Result.failure(IllegalArgumentException("Completa los campos obligatorios"))
+        }
+        if (password.length < 8) {
+            return Result.failure(IllegalArgumentException("La contraseña debe tener al menos 8 caracteres"))
+        }
+        return auth.activateUnit(
+            activationCode = activationCode.trim().uppercase(),
+            fullName = fullName.trim(),
+            email = email.trim(),
+            phone = phone.trim(),
+            password = password,
+        )
+    }
+}
+
 /** Reads the real GPS position and sends POST /api/v1/access/open. */
 class OpenAccessUseCase(
     private val location: LocationSource,

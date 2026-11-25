@@ -18,7 +18,7 @@ export class ApiError extends Error {
 
 export const AUTH_LOGOUT_EVENT = 'auth:logout';
 
-const PUBLIC_PATHS = ['/auth/login', '/auth/refresh', '/setup/status', '/setup/initialize'];
+const PUBLIC_PATHS = ['/auth/login', '/auth/refresh', '/auth/activate-unit', '/setup/status', '/setup/initialize'];
 const isPublicPath = (url?: string) => !!url && PUBLIC_PATHS.some((p) => url.endsWith(p));
 
 export const api = axios.create({ baseURL: '/api/v1', timeout: 20000 });

@@ -8,7 +8,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.Button
@@ -17,6 +19,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -37,6 +40,7 @@ fun LoginScreen(
     serverUrl: String,
     viewModel: LoginViewModel,
     onLoginSuccess: () -> Unit,
+    onActivateUnit: () -> Unit,
     onChangeServer: () -> Unit,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -45,6 +49,7 @@ fun LoginScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .verticalScroll(rememberScrollState())
                 .padding(padding)
                 .padding(24.dp),
             verticalArrangement = Arrangement.Center,
@@ -117,6 +122,15 @@ fun LoginScreen(
             }
 
             Spacer(Modifier.height(12.dp))
+            OutlinedButton(
+                onClick = onActivateUnit,
+                enabled = !state.loading,
+                modifier = Modifier.fillMaxWidth().height(48.dp),
+            ) {
+                Text("Activar departamento con código")
+            }
+
+            Spacer(Modifier.height(8.dp))
             TextButton(onClick = onChangeServer) {
                 Text("Cambiar servidor local")
             }

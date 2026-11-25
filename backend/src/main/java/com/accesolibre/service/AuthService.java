@@ -2,14 +2,23 @@ package com.accesolibre.service;
 
 import com.accesolibre.domain.entity.Condominium;
 import com.accesolibre.domain.entity.RefreshToken;
+import com.accesolibre.domain.entity.Unit;
+import com.accesolibre.domain.entity.UnitActivationCode;
 import com.accesolibre.domain.entity.User;
+import com.accesolibre.domain.enums.UserRole;
+import com.accesolibre.dto.auth.ActivateUnitRequest;
 import com.accesolibre.dto.auth.AuthResponse;
 import com.accesolibre.dto.auth.LoginRequest;
 import com.accesolibre.dto.auth.LogoutRequest;
 import com.accesolibre.dto.auth.RefreshTokenRequest;
+import com.accesolibre.exception.AccessDeniedDomainException;
+import com.accesolibre.exception.BadRequestException;
+import com.accesolibre.exception.ConflictException;
 import com.accesolibre.exception.UnauthorizedException;
 import com.accesolibre.repository.CondominiumRepository;
 import com.accesolibre.repository.RefreshTokenRepository;
+import com.accesolibre.repository.UnitActivationCodeRepository;
+import com.accesolibre.repository.UnitRepository;
 import com.accesolibre.repository.UserRepository;
 import com.accesolibre.security.AuthenticatedUser;
 import com.accesolibre.security.JwtService;
@@ -19,11 +28,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.Locale;
 
 @Service
 public class AuthService {
 
     private final CondominiumRepository condominiumRepository;
+    private final UnitRepository unitRepository;
+    private final UnitActivationCodeRepository activationCodeRepository;
     private final UserRepository userRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
@@ -32,6 +44,8 @@ public class AuthService {
 
     public AuthService(
             CondominiumRepository condominiumRepository,
+            UnitRepository unitRepository,
+            UnitActivationCodeRepository activationCodeRepository,
             UserRepository userRepository,
             RefreshTokenRepository refreshTokenRepository,
             PasswordEncoder passwordEncoder,
@@ -39,6 +53,8 @@ public class AuthService {
             TenantAccessGuard tenantAccessGuard
     ) {
         this.condominiumRepository = condominiumRepository;
+        this.unitRepository = unitRepository;
+        this.activationCodeRepository = activationCodeRepository;
         this.userRepository = userRepository;
         this.refreshTokenRepository = refreshTokenRepository;
         this.passwordEncoder = passwordEncoder;
@@ -69,6 +85,66 @@ public class AuthService {
         userRepository.save(user);
 
         return issueTokenPair(user);
+    }
+
+    @Transactional
+    public AuthResponse activateUnit(ActivateUnitRequest request) {
+        String normalizedCode = request.activationCode().trim().toUpperCase(Locale.ROOT);
+        Instant now = Instant.now();
+
+        UnitActivationCode codeEntity = activationCodeRepository.findByCodeForUpdate(normalizedCode)
+                .orElseThrow(() -> new BadRequestException("Código de activación inválido"));
+
+        if (!Boolean.TRUE.equals(codeEntity.getActive())) {
+            throw new BadRequestException("Este código de activación ya no está vigente");
+        }
+        if (!codeEntity.getExpiresAt().isAfter(now)) {
+            throw new BadRequestException("Este código de activación ha expirado");
+        }
+        if (codeEntity.getUsedCount() >= codeEntity.getMaxUses()) {
+            throw new BadRequestException("Este código de activación ya alcanzó el límite de integrantes");
+        }
+
+        Condominium condo = condominiumRepository.findById(codeEntity.getCondominiumId())
+                .filter(c -> Boolean.TRUE.equals(c.getActive()))
+                .orElseThrow(() -> new BadRequestException("El condominio asociado al código no está activo"));
+
+        Unit unit = unitRepository.findByIdAndCondominiumId(codeEntity.getUnitId(), condo.getId())
+                .orElseThrow(() -> new BadRequestException("El departamento asociado al código no existe"));
+
+        if (!Boolean.TRUE.equals(unit.getActive()) || Boolean.TRUE.equals(unit.getBlocked())) {
+            throw new AccessDeniedDomainException(
+                    "DENIED_UNIT_BLOCKED",
+                    "El departamento se encuentra inactivo o bloqueado"
+            );
+        }
+
+        String normalizedEmail = request.email().trim().toLowerCase(Locale.ROOT);
+        if (userRepository.existsByCondominiumIdAndEmailIgnoreCase(condo.getId(), normalizedEmail)) {
+            throw new ConflictException("Ya existe una cuenta registrada con ese correo en este condominio");
+        }
+
+        User resident = new User();
+        resident.setCondominiumId(condo.getId());
+        resident.setUnitId(unit.getId());
+        resident.setEmail(normalizedEmail);
+        resident.setPasswordHash(passwordEncoder.encode(request.password()));
+        resident.setFullName(request.fullName().trim());
+        resident.setPhone(request.phone() != null && !request.phone().isBlank() ? request.phone().trim() : null);
+        resident.setRole(UserRole.RESIDENT);
+        resident.setActive(true);
+        resident.setBlocked(false);
+        resident.setLastLoginAt(now);
+        User savedResident = userRepository.save(resident);
+
+        int nextUsed = codeEntity.getUsedCount() + 1;
+        codeEntity.setUsedCount(nextUsed);
+        if (nextUsed >= codeEntity.getMaxUses()) {
+            codeEntity.setActive(false);
+        }
+        activationCodeRepository.save(codeEntity);
+
+        return issueTokenPair(savedResident);
     }
 
     @Transactional

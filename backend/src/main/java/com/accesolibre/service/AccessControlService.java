@@ -245,10 +245,18 @@ public class AccessControlService {
         AuthenticatedUser caller = tenantAccessGuard.requireCondoAccess(condoId);
         final UUID effectiveUnitId;
         if (caller.isResident()) {
-            if (caller.unitId() == null) {
+            User liveUser = userRepository.findByIdAndCondominiumId(caller.userId(), condoId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Authenticated user not found"));
+            if (!Boolean.TRUE.equals(liveUser.getActive()) || Boolean.TRUE.equals(liveUser.getBlocked())) {
+                throw new AccessDeniedDomainException(
+                        "DENIED_USER_BLOCKED",
+                        "User account is inactive or blocked"
+                );
+            }
+            if (liveUser.getUnitId() == null) {
                 return new PageResponse<>(List.of(), pageable.getPageNumber(), pageable.getPageSize(), 0, 0, true);
             }
-            effectiveUnitId = caller.unitId();   // residents only ever see their own unit
+            effectiveUnitId = liveUser.getUnitId();   // residents only ever see their own unit
         } else {
             effectiveUnitId = unitId;
         }
@@ -272,7 +280,7 @@ public class AccessControlService {
                 predicates.add(cb.greaterThanOrEqualTo(root.get("occurredAt"), from));
             }
             if (to != null) {
-                predicates.add(cb.lessThan(root.get("occurredAt"), to));
+                predicates.add(cb.lessThanOrEqualTo(root.get("occurredAt"), to));
             }
             return cb.and(predicates.toArray(new Predicate[0]));
         };

@@ -15,6 +15,9 @@ interface AccesoLibreApi {
     @POST("api/v1/auth/login")
     suspend fun login(@Body body: LoginRequestDto): Response<AuthResponseDto>
 
+    @POST("api/v1/auth/activate-unit")
+    suspend fun activateUnit(@Body body: ActivateUnitRequestDto): Response<AuthResponseDto>
+
     @POST("api/v1/auth/refresh")
     suspend fun refresh(@Body body: RefreshTokenRequestDto): Response<AuthResponseDto>
 

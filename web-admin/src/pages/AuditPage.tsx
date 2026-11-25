@@ -23,10 +23,16 @@ interface Draft {
 
 const emptyDraft: Draft = { from: '', to: '', unitId: '', deviceId: '', methodKey: '', result: '' };
 
-/** yyyy-mm-dd (local) -> ISO instant at local midnight. */
-function localDayStartIso(day: string, plusDays = 0): string {
+/** yyyy-mm-dd (local browser timezone) -> ISO-8601 UTC start of day (00:00:00.000). */
+function localStartOfDayUtcIso(day: string): string {
   const [y, m, d] = day.split('-').map(Number);
-  return new Date(y, m - 1, d + plusDays, 0, 0, 0, 0).toISOString();
+  return new Date(y, m - 1, d, 0, 0, 0, 0).toISOString();
+}
+
+/** yyyy-mm-dd (local browser timezone) -> ISO-8601 UTC end of day (23:59:59.999). */
+function localEndOfDayUtcIso(day: string): string {
+  const [y, m, d] = day.split('-').map(Number);
+  return new Date(y, m - 1, d, 23, 59, 59, 999).toISOString();
 }
 
 function toFilters(draft: Draft): AccessLogFilters {
@@ -36,8 +42,8 @@ function toFilters(draft: Draft): AccessLogFilters {
     deviceId: draft.deviceId || undefined,
     result: draft.result || undefined,
     method: group?.methods,
-    from: draft.from ? localDayStartIso(draft.from) : undefined,
-    to: draft.to ? localDayStartIso(draft.to, 1) : undefined, // inclusive end day => exclusive next midnight
+    from: draft.from ? localStartOfDayUtcIso(draft.from) : undefined,
+    to: draft.to ? localEndOfDayUtcIso(draft.to) : undefined,
   };
 }
 

@@ -1,5 +1,6 @@
 com\accesolibre\mqtt\MqttTelemetryListener$3.class
 com\accesolibre\repository\RefreshTokenRepository.class
+com\accesolibre\domain\entity\UnitActivationCode.class
 com\accesolibre\domain\enums\UserRole.class
 com\accesolibre\dto\user\UserResponse.class
 com\accesolibre\service\CompactQrCryptoService$ParsedQrPayload.class
@@ -18,6 +19,7 @@ com\accesolibre\domain\entity\IntercomCall.class
 com\accesolibre\exception\ResourceNotFoundException.class
 com\accesolibre\dto\intercom\IntercomDecisionRequest.class
 com\accesolibre\config\SecurityConfig.class
+com\accesolibre\service\UnitActivationService.class
 com\accesolibre\config\WebSocketConfig.class
 com\accesolibre\exception\AccessDeniedDomainException.class
 com\accesolibre\service\GeofenceService.class
@@ -26,6 +28,7 @@ com\accesolibre\mqtt\MqttTelemetryListener$1.class
 com\accesolibre\dto\common\ApiErrorResponse.class
 com\accesolibre\service\AccessControlService.class
 com\accesolibre\controller\IntercomController.class
+com\accesolibre\dto\unit\UnitActivationCodeResponse.class
 com\accesolibre\controller\IotDeviceController.class
 com\accesolibre\domain\entity\AccessPass.class
 com\accesolibre\dto\device\UpdateDeviceRequest.class
@@ -34,6 +37,7 @@ com\accesolibre\repository\CondominiumRepository.class
 com\accesolibre\controller\UserController.class
 com\accesolibre\AccesoLibreApplication.class
 com\accesolibre\dto\qr\ValidateQrResponse.class
+com\accesolibre\dto\unit\CreateUnitActivationCodeRequest.class
 com\accesolibre\dto\unit\UpdateUnitRequest.class
 com\accesolibre\repository\AccessLogRepository.class
 com\accesolibre\exception\BadRequestException.class
@@ -61,6 +65,7 @@ com\accesolibre\dto\setup\SetupInitializeRequest.class
 com\accesolibre\domain\enums\DeviceType.class
 com\accesolibre\dto\user\UpdateUserRequest.class
 com\accesolibre\service\UnitService.class
+com\accesolibre\dto\auth\ActivateUnitRequest.class
 com\accesolibre\security\JwtService.class
 com\accesolibre\service\IntercomService.class
 com\accesolibre\dto\auth\RefreshTokenRequest.class
@@ -72,6 +77,7 @@ com\accesolibre\exception\UnauthorizedException.class
 com\accesolibre\security\TenantAccessGuard.class
 com\accesolibre\mqtt\MqttTelemetryListener.class
 com\accesolibre\domain\enums\PassStatus.class
+com\accesolibre\repository\UnitActivationCodeRepository.class
 com\accesolibre\dto\qr\AccessPassResponse.class
 com\accesolibre\domain\entity\RefreshToken.class
 com\accesolibre\domain\entity\User.class
@@ -93,6 +99,7 @@ com\accesolibre\exception\ApiException.class
 com\accesolibre\domain\enums\PassType.class
 com\accesolibre\repository\AccessPassRepository.class
 com\accesolibre\config\AppProperties$Qr.class
+com\accesolibre\dto\unit\RevokeUnitResidentsResponse.class
 com\accesolibre\config\AppProperties$Mqtt.class
 com\accesolibre\dto\intercom\InitiateIntercomCallRequest.class
 com\accesolibre\controller\AuthController.class
