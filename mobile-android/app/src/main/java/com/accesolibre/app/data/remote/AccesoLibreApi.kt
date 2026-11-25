@@ -12,6 +12,9 @@ interface AccesoLibreApi {
     @GET("actuator/health")
     suspend fun health(): Response<HealthDto>
 
+    @GET("api/v1/setup/status")
+    suspend fun setupStatus(): Response<SetupStatusDto>
+
     @POST("api/v1/auth/login")
     suspend fun login(@Body body: LoginRequestDto): Response<AuthResponseDto>
 

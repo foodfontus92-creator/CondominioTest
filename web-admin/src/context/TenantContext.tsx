@@ -60,6 +60,10 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   return <TenantContext.Provider value={value}>{children}</TenantContext.Provider>;
 }
 
+export function useTenantOptional(): TenantContextValue | null {
+  return useContext(TenantContext);
+}
+
 export function useTenant(): TenantContextValue {
   const ctx = useContext(TenantContext);
   if (!ctx) throw new Error('useTenant must be used inside TenantProvider');
@@ -75,6 +79,15 @@ export function useUnits() {
 export function useUsers() {
   const { condoId } = useTenant();
   return useQuery({ queryKey: ['users', condoId], queryFn: () => userApi.list(condoId), enabled: !!condoId });
+}
+
+export function useResidentsSummary() {
+  const { condoId } = useTenant();
+  return useQuery({
+    queryKey: ['users-summary', condoId],
+    queryFn: () => userApi.summary(condoId),
+    enabled: !!condoId,
+  });
 }
 
 export function useDevices() {

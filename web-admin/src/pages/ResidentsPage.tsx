@@ -5,16 +5,19 @@ import type { AppUser, UserRole } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
 import { Badge, EmptyState, ErrorBox, Field, Modal, PageHeader, Spinner } from '../components/ui';
 import ReasonModal from '../components/ReasonModal';
-import { useTenant, useUnits, useUsers } from '../context/TenantContext';
+import { useResidentsSummary, useTenant, useUnits, useUsers } from '../context/TenantContext';
 import { useToast } from '../context/ToastContext';
+import { formatUnitLabel, useCommunityLabels } from '../lib/communityLabels';
 import { formatDateTime, roleLabel } from '../lib/format';
 import { errMsg } from '../lib/hooks';
 
 export default function ResidentsPage() {
   const { condoId } = useTenant();
   const { user: currentUser } = useAuth();
+  const labels = useCommunityLabels();
   const users = useUsers();
   const units = useUnits();
+  const summaryQuery = useResidentsSummary();
   const toast = useToast();
   const queryClient = useQueryClient();
 
@@ -24,8 +27,30 @@ export default function ResidentsPage() {
   const [editing, setEditing] = useState<AppUser | 'new' | null>(null);
   const [blocking, setBlocking] = useState<AppUser | null>(null);
 
-  const refresh = () => queryClient.invalidateQueries({ queryKey: ['users', condoId] });
-  const unitName = useMemo(() => new Map((units.data ?? []).map((u) => [u.id, u.unitNumber])), [units.data]);
+  const refresh = () => {
+    void queryClient.invalidateQueries({ queryKey: ['users', condoId] });
+    void queryClient.invalidateQueries({ queryKey: ['users-summary', condoId] });
+  };
+  const unitName = useMemo(() => new Map((units.data ?? []).map((u) => [u.id, formatUnitLabel(u)])), [units.data]);
+
+  const fallbackSummary = useMemo(() => {
+    const residents = (users.data ?? []).filter((u) => u.role === 'RESIDENT');
+    const activeUnitIds = new Set((units.data ?? []).filter((u) => u.active).map((u) => u.id));
+    const active = residents.filter((u) => u.active && !u.blocked);
+    return {
+      totalResidents: residents.length,
+      activeResidents: active.length,
+      blockedResidents: residents.filter((u) => u.blocked).length,
+      inactiveResidents: residents.filter((u) => !u.active).length,
+      blockedOrInactiveResidents: residents.length - active.length,
+      occupiedUnits: new Set(
+        active.map((u) => u.unitId).filter((id): id is string => !!id && activeUnitIds.has(id)),
+      ).size,
+      totalUnits: activeUnitIds.size,
+    };
+  }, [users.data, units.data]);
+
+  const summary = summaryQuery.data ?? fallbackSummary;
 
   const update = useMutation({
     mutationFn: ({ user, body }: { user: AppUser; body: Parameters<typeof userApi.update>[2] }) =>
@@ -64,20 +89,55 @@ export default function ResidentsPage() {
   return (
     <div>
       <PageHeader
-        title="Residentes"
-        subtitle="Usuarios del condominio y su unidad asignada."
+        title={labels.residentsTitle}
+        subtitle={`Usuarios ${labels.ofCommunity} y su ${labels.unitSingularLower} asignada.`}
         actions={<button className="btn-primary" onClick={() => setEditing('new')}>+ Nuevo usuario</button>}
       />
+
+      <div className="mb-4 grid grid-cols-2 gap-4 xl:grid-cols-4">
+        <div className="card p-4">
+          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Total registrados {labels.inCommunity}
+          </div>
+          <div className="mt-1 text-3xl font-bold text-slate-900">{summary.totalResidents}</div>
+          <div className="mt-1 text-xs text-slate-500">{labels.residentsNav} registrados</div>
+        </div>
+        <div className="card p-4">
+          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Activos</div>
+          <div className="mt-1 text-3xl font-bold text-emerald-600">{summary.activeResidents}</div>
+          <div className="mt-1 text-xs text-slate-500">Habilitados para abrir</div>
+        </div>
+        <div className="card p-4">
+          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Bloqueados / Inactivos</div>
+          <div className={`mt-1 text-3xl font-bold ${summary.blockedOrInactiveResidents > 0 ? 'text-red-600' : 'text-slate-900'}`}>
+            {summary.blockedOrInactiveResidents}
+          </div>
+          <div className="mt-1 text-xs text-slate-500">
+            {summary.blockedResidents} bloqueados · {summary.inactiveResidents} inactivos
+          </div>
+        </div>
+        <div className="card p-4">
+          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            {labels.occupiedUnitsLabel}
+          </div>
+          <div className="mt-1 text-3xl font-bold text-brand-700">
+            {summary.occupiedUnits} <span className="text-lg font-medium text-slate-400">/ {summary.totalUnits}</span>
+          </div>
+          <div className="mt-1 text-xs text-slate-500">
+            Con al menos 1 {labels.residentSingularLower} activo
+          </div>
+        </div>
+      </div>
 
       <div className="card mb-4 flex flex-wrap items-center gap-3 p-4">
         <input className="input max-w-xs" placeholder="Buscar nombre o correo…" value={search} onChange={(e) => setSearch(e.target.value)} />
         <select className="input !w-auto" value={unitFilter} onChange={(e) => setUnitFilter(e.target.value)}>
-          <option value="">Todas las unidades</option>
-          {(units.data ?? []).map((u) => <option key={u.id} value={u.id}>{u.unitNumber}</option>)}
+          <option value="">{labels.allUnitsOption}</option>
+          {(units.data ?? []).map((u) => <option key={u.id} value={u.id}>{formatUnitLabel(u)}</option>)}
         </select>
         <select className="input !w-auto" value={roleFilter} onChange={(e) => setRoleFilter(e.target.value as '' | UserRole)}>
           <option value="">Todos los roles</option>
-          <option value="RESIDENT">Residentes</option>
+          <option value="RESIDENT">{labels.residentsNav}</option>
           <option value="CONDO_ADMIN">Administradores</option>
           <option value="SUPER_ADMIN">Super administradores</option>
         </select>
@@ -95,7 +155,7 @@ export default function ResidentsPage() {
                 <th className="th">Nombre</th>
                 <th className="th">Correo</th>
                 <th className="th">Rol</th>
-                <th className="th">Unidad</th>
+                <th className="th">{labels.unitSingular}</th>
                 <th className="th">Último acceso</th>
                 <th className="th">Estado</th>
                 <th className="th text-right">Acciones</th>
@@ -180,6 +240,7 @@ export default function ResidentsPage() {
 function UserFormModal({ user, onClose, onSaved }: { user: AppUser | null; onClose: () => void; onSaved: () => void }) {
   const { condoId } = useTenant();
   const { user: me } = useAuth();
+  const labels = useCommunityLabels();
   const units = useUnits();
   const toast = useToast();
 
@@ -253,11 +314,11 @@ function UserFormModal({ user, onClose, onSaved }: { user: AppUser | null; onClo
             </select>
           </Field>
         </div>
-        <Field label={`Unidad${unitRequired ? '' : ' (opcional)'}`}>
+        <Field label={`${labels.unitSingular}${unitRequired ? '' : ' (opcional)'}`}>
           <select className="input" value={unitId} onChange={(e) => setUnitId(e.target.value)} required={unitRequired}>
             <option value="">— Seleccionar —</option>
             {(units.data ?? []).filter((u) => u.active).map((u) => (
-              <option key={u.id} value={u.id}>{u.unitNumber}{u.towerOrBlock ? ` · ${u.towerOrBlock}` : ''}</option>
+              <option key={u.id} value={u.id}>{formatUnitLabel(u)}</option>
             ))}
           </select>
         </Field>

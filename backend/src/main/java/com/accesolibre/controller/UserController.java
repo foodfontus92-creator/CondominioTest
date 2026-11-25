@@ -1,6 +1,7 @@
 package com.accesolibre.controller;
 
 import com.accesolibre.dto.user.CreateUserRequest;
+import com.accesolibre.dto.user.ResidentsSummaryResponse;
 import com.accesolibre.dto.user.UpdateUserRequest;
 import com.accesolibre.dto.user.UserResponse;
 import com.accesolibre.service.UserService;
@@ -31,6 +32,11 @@ public class UserController {
     @GetMapping
     public ResponseEntity<List<UserResponse>> list(@PathVariable UUID condoId) {
         return ResponseEntity.ok(userService.listUsers(condoId));
+    }
+
+    @GetMapping("/summary")
+    public ResponseEntity<ResidentsSummaryResponse> summary(@PathVariable UUID condoId) {
+        return ResponseEntity.ok(userService.getResidentsSummary(condoId));
     }
 
     @GetMapping("/{userId}")

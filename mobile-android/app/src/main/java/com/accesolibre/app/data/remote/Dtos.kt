@@ -2,6 +2,11 @@ package com.accesolibre.app.data.remote
 
 data class HealthDto(val status: String?)
 
+data class SetupStatusDto(
+    val initialized: Boolean = true,
+    val defaultCommunityType: String? = null,
+)
+
 data class ApiErrorDto(
     val status: Int?,
     val error: String?,
@@ -42,6 +47,7 @@ data class AuthResponseDto(
     val accessTokenExpiresInSeconds: Long,
     val refreshToken: String,
     val refreshTokenExpiresInSeconds: Long,
+    val communityType: String? = null,
     val user: UserProfileDto,
 )
 
@@ -49,9 +55,12 @@ data class UserProfileDto(
     val id: String,
     val condominiumId: String,
     val unitId: String?,
+    val unitNumber: String? = null,
+    val blockName: String? = null,
     val email: String,
     val fullName: String,
     val role: String,
+    val communityType: String? = null,
 )
 
 // ---- Unit secret & Offline QR passes ---------------------------------------
@@ -61,6 +70,7 @@ data class UnitSecretResponseDto(
     val unitId: String,
     val unitIdB64: String,
     val unitNumber: String,
+    val blockName: String? = null,
     val unitSecret: String,
     val hmacKeyVersion: Int,
     val qrFormat: String,

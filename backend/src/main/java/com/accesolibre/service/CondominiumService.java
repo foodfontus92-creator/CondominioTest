@@ -3,6 +3,7 @@ package com.accesolibre.service;
 import com.accesolibre.domain.entity.Condominium;
 import com.accesolibre.domain.entity.IotDevice;
 import com.accesolibre.domain.entity.Unit;
+import com.accesolibre.domain.enums.CommunityType;
 import com.accesolibre.dto.condo.CondominiumResponse;
 import com.accesolibre.dto.condo.CreateCondominiumRequest;
 import com.accesolibre.dto.condo.UpdateCondominiumRequest;
@@ -82,6 +83,7 @@ public class CondominiumService {
         Condominium condo = new Condominium();
         condo.setCode(code);
         condo.setName(request.name().trim());
+        condo.setCommunityType(request.communityType() != null ? request.communityType() : CommunityType.CONDOMINIUM);
         condo.setAddress(request.address());
         condo.setTimezone(request.timezone() != null && !request.timezone().isBlank() ? request.timezone().trim() : "UTC");
         condo.setHmacSecret(qrCryptoService.generateRandomHmacSecretHex());
@@ -102,6 +104,9 @@ public class CondominiumService {
 
         if (request.name() != null && !request.name().isBlank()) {
             condo.setName(request.name().trim());
+        }
+        if (request.communityType() != null) {
+            condo.setCommunityType(request.communityType());
         }
         if (request.address() != null) {
             condo.setAddress(request.address());

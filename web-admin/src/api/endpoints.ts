@@ -4,6 +4,8 @@ import type {
   AccessLogFilters,
   AppUser,
   AuthResponse,
+  BatchCreateUnitsBody,
+  BatchCreateUnitsResponse,
   Condominium,
   CreateActivationCodeBody,
   CreateCondominiumBody,
@@ -12,6 +14,7 @@ import type {
   CreateUserBody,
   Device,
   Page,
+  ResidentsSummary,
   RevokeResidentsResponse,
   SetupInitializeBody,
   SetupInitializeResponse,
@@ -49,6 +52,8 @@ export const unitApi = {
   list: (condoId: string) => api.get<Unit[]>(`/condos/${condoId}/units`).then((r) => r.data),
   create: (condoId: string, body: CreateUnitBody) =>
     api.post<Unit>(`/condos/${condoId}/units`, body).then((r) => r.data),
+  createBatch: (condoId: string, body: BatchCreateUnitsBody) =>
+    api.post<BatchCreateUnitsResponse>(`/condos/${condoId}/units/batch`, body).then((r) => r.data),
   update: (condoId: string, unitId: string, body: UpdateUnitBody) =>
     api.patch<Unit>(`/condos/${condoId}/units/${unitId}`, body).then((r) => r.data),
   createActivationCode: (condoId: string, unitId: string, body: CreateActivationCodeBody) =>
@@ -59,6 +64,7 @@ export const unitApi = {
 
 export const userApi = {
   list: (condoId: string) => api.get<AppUser[]>(`/condos/${condoId}/users`).then((r) => r.data),
+  summary: (condoId: string) => api.get<ResidentsSummary>(`/condos/${condoId}/users/summary`).then((r) => r.data),
   create: (condoId: string, body: CreateUserBody) =>
     api.post<AppUser>(`/condos/${condoId}/users`, body).then((r) => r.data),
   update: (condoId: string, userId: string, body: UpdateUserBody) =>

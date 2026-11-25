@@ -1,5 +1,7 @@
 package com.accesolibre.controller;
 
+import com.accesolibre.dto.unit.BatchCreateUnitsRequest;
+import com.accesolibre.dto.unit.BatchCreateUnitsResponse;
 import com.accesolibre.dto.unit.CreateUnitActivationCodeRequest;
 import com.accesolibre.dto.unit.CreateUnitRequest;
 import com.accesolibre.dto.unit.RevokeUnitResidentsResponse;
@@ -50,6 +52,14 @@ public class UnitController {
             @Valid @RequestBody CreateUnitRequest request
     ) {
         return ResponseEntity.status(HttpStatus.CREATED).body(unitService.createUnit(condoId, request));
+    }
+
+    @PostMapping("/batch")
+    public ResponseEntity<BatchCreateUnitsResponse> createBatch(
+            @PathVariable UUID condoId,
+            @Valid @RequestBody BatchCreateUnitsRequest request
+    ) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(unitService.createUnitsBatch(condoId, request));
     }
 
     @PatchMapping("/{unitId}")

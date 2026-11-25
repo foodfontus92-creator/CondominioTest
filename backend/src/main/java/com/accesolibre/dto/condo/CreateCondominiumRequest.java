@@ -1,5 +1,6 @@
 package com.accesolibre.dto.condo;
 
+import com.accesolibre.domain.enums.CommunityType;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Max;
@@ -31,6 +32,8 @@ public record CreateCondominiumRequest(
         Double longitude,
 
         @Min(10) @Max(5000)
-        Integer geofenceRadiusMeters
+        Integer geofenceRadiusMeters,
+
+        CommunityType communityType
 ) {
 }

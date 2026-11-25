@@ -20,6 +20,7 @@ import com.accesolibre.app.domain.model.OpenOutcome
 import com.accesolibre.app.domain.model.Pass
 import com.accesolibre.app.domain.model.Session
 import com.accesolibre.app.domain.model.UnitSecret
+import com.accesolibre.app.domain.model.communityLabelsFor
 import com.accesolibre.app.domain.repository.AccessRepository
 import com.accesolibre.app.domain.repository.AuthRepository
 import com.accesolibre.app.domain.repository.IntercomRepository
@@ -78,6 +79,24 @@ class AuthRepositoryImpl(
     private val _session = MutableStateFlow(storage.readSession())
     override val session: StateFlow<Session?> = _session.asStateFlow()
 
+    private val _lastCommunityType = MutableStateFlow(
+        storage.readSession()?.communityType ?: storage.lastCommunityType ?: "CONDOMINIUM"
+    )
+    override val lastCommunityType: StateFlow<String> = _lastCommunityType.asStateFlow()
+
+    override suspend fun refreshServerCommunityType() {
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val resp = network.api.setupStatus()
+                val type = resp.body()?.defaultCommunityType
+                if (resp.isSuccessful && !type.isNullOrBlank()) {
+                    storage.lastCommunityType = type
+                    _lastCommunityType.value = type
+                }
+            }
+        }
+    }
+
     override suspend fun login(condominiumCode: String, email: String, password: String): Result<Session> =
         withContext(Dispatchers.IO) {
             runCatching {
@@ -107,7 +126,7 @@ class AuthRepositoryImpl(
                 )
             )
             if (!resp.isSuccessful || resp.body() == null) {
-                error(network.extractError(resp, "No se pudo activar el departamento"))
+                error(network.extractError(resp, communityLabelsFor(_lastCommunityType.value).activateErrorFallback))
             }
             persistAuthResponse(resp.body()!!)
         }
@@ -117,6 +136,11 @@ class AuthRepositoryImpl(
         storage.accessToken = body.accessToken
         storage.refreshToken = body.refreshToken
 
+        val resolvedCommunityType = body.user.communityType
+            ?: body.communityType
+            ?: storage.lastCommunityType
+            ?: "CONDOMINIUM"
+
         val userSession = Session(
             userId = body.user.id,
             condominiumId = body.user.condominiumId,
@@ -124,8 +148,12 @@ class AuthRepositoryImpl(
             email = body.user.email,
             fullName = body.user.fullName,
             role = body.user.role,
+            communityType = resolvedCommunityType,
+            blockName = body.user.blockName,
+            unitNumber = body.user.unitNumber,
         )
         storage.saveSession(userSession)
+        _lastCommunityType.value = resolvedCommunityType
         _session.value = userSession
 
         // Immediately fetch & encrypt unit_secret so offline QR generation works right away
@@ -146,10 +174,19 @@ class AuthRepositoryImpl(
                 condominiumId = dto.condominiumId,
                 unitId = dto.unitId,
                 unitNumber = dto.unitNumber,
+                blockName = dto.blockName,
                 secretHex = dto.unitSecret,
                 hmacKeyVersion = dto.hmacKeyVersion,
             )
             storage.saveUnitSecret(secret)
+            storage.readSession()?.let { current ->
+                val updated = current.copy(
+                    blockName = dto.blockName ?: current.blockName,
+                    unitNumber = dto.unitNumber.ifBlank { current.unitNumber },
+                )
+                storage.saveSession(updated)
+                _session.value = updated
+            }
             secret
         }
     }

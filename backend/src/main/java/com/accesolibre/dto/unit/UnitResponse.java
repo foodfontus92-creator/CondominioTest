@@ -9,6 +9,7 @@ public record UnitResponse(
         UUID id,
         UUID condominiumId,
         String unitNumber,
+        String blockName,
         String towerOrBlock,
         String floor,
         String intercomExtension,
@@ -19,11 +20,13 @@ public record UnitResponse(
         Instant updatedAt
 ) {
     public static UnitResponse from(Unit entity) {
+        String effectiveBlock = entity.effectiveBlockName();
         return new UnitResponse(
                 entity.getId(),
                 entity.getCondominiumId(),
                 entity.getUnitNumber(),
-                entity.getTowerOrBlock(),
+                effectiveBlock,
+                effectiveBlock,
                 entity.getFloor(),
                 entity.getIntercomExtension(),
                 entity.getActive(),

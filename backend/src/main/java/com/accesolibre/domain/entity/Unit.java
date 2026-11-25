@@ -24,6 +24,9 @@ public class Unit {
     @Column(name = "unit_number", nullable = false, length = 32)
     private String unitNumber;
 
+    @Column(name = "block_name", length = 64)
+    private String blockName;
+
     @Column(name = "tower_or_block", length = 64)
     private String towerOrBlock;
 
@@ -83,8 +86,21 @@ public class Unit {
     public String getUnitNumber() { return unitNumber; }
     public void setUnitNumber(String unitNumber) { this.unitNumber = unitNumber; }
 
+    public String getBlockName() { return blockName; }
+    public void setBlockName(String blockName) { this.blockName = blockName; }
+
     public String getTowerOrBlock() { return towerOrBlock; }
     public void setTowerOrBlock(String towerOrBlock) { this.towerOrBlock = towerOrBlock; }
+
+    public String effectiveBlockName() {
+        if (blockName != null && !blockName.isBlank()) {
+            return blockName.trim();
+        }
+        if (towerOrBlock != null && !towerOrBlock.isBlank()) {
+            return towerOrBlock.trim();
+        }
+        return null;
+    }
 
     public String getFloor() { return floor; }
     public void setFloor(String floor) { this.floor = floor; }

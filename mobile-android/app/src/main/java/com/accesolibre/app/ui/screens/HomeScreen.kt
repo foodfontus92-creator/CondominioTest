@@ -44,6 +44,8 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.accesolibre.app.domain.model.DeviceKind
+import com.accesolibre.app.domain.model.communityLabelsFor
+import com.accesolibre.app.domain.model.formatUnitDisplay
 import com.accesolibre.app.ui.viewmodel.HomeViewModel
 
 @Composable
@@ -91,6 +93,7 @@ fun HomeScreen(
 
     val hasGate = state.devices.any { it.matches(DeviceKind.GATE) }
     val hasPedestrian = state.devices.any { it.matches(DeviceKind.PEDESTRIAN) }
+    val labels = communityLabelsFor(state.communityType)
 
     Column(
         modifier = Modifier
@@ -111,7 +114,9 @@ fun HomeScreen(
                     fontWeight = FontWeight.Bold,
                 )
                 Text(
-                    text = state.unitNumber?.let { "Unidad $it • Apertura con GPS" } ?: "Apertura remota con GPS",
+                    text = formatUnitDisplay(state.communityType, state.blockName, state.unitNumber)
+                        ?.let { "$it • Apertura con GPS" }
+                        ?: "Apertura remota con GPS",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -177,7 +182,7 @@ fun HomeScreen(
 
         if (state.devices.isNotEmpty()) {
             Text(
-                text = "Dispositivos del condominio (${state.devices.size})",
+                text = "Dispositivos ${labels.ofCommunity} (${state.devices.size})",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
             )

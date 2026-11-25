@@ -1,8 +1,10 @@
 package com.accesolibre.service;
 
+import com.accesolibre.domain.entity.Unit;
 import com.accesolibre.domain.entity.User;
 import com.accesolibre.domain.enums.UserRole;
 import com.accesolibre.dto.user.CreateUserRequest;
+import com.accesolibre.dto.user.ResidentsSummaryResponse;
 import com.accesolibre.dto.user.UpdateUserRequest;
 import com.accesolibre.dto.user.UserResponse;
 import com.accesolibre.exception.BadRequestException;
@@ -21,7 +23,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class UserService {
@@ -55,6 +59,46 @@ public class UserService {
         return userRepository.findAllByCondominiumIdOrderByFullNameAsc(condoId).stream()
                 .map(UserResponse::from)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public ResidentsSummaryResponse getResidentsSummary(UUID condoId) {
+        tenantAccessGuard.requireCondoAdmin(condoId);
+        List<User> residents = userRepository.findAllByCondominiumIdAndRoleOrderByFullNameAsc(condoId, UserRole.RESIDENT);
+        List<Unit> activeUnits = unitRepository.findAllByCondominiumIdAndActiveTrueOrderByUnitNumberAsc(condoId);
+        Set<UUID> activeUnitIds = activeUnits.stream()
+                .map(Unit::getId)
+                .collect(Collectors.toSet());
+
+        long total = residents.size();
+        long active = residents.stream()
+                .filter(u -> Boolean.TRUE.equals(u.getActive()) && !Boolean.TRUE.equals(u.getBlocked()))
+                .count();
+        long blocked = residents.stream()
+                .filter(u -> Boolean.TRUE.equals(u.getBlocked()))
+                .count();
+        long inactive = residents.stream()
+                .filter(u -> !Boolean.TRUE.equals(u.getActive()))
+                .count();
+        long blockedOrInactive = total - active;
+        long occupiedUnits = residents.stream()
+                .filter(u -> Boolean.TRUE.equals(u.getActive())
+                        && !Boolean.TRUE.equals(u.getBlocked())
+                        && u.getUnitId() != null
+                        && activeUnitIds.contains(u.getUnitId()))
+                .map(User::getUnitId)
+                .distinct()
+                .count();
+
+        return new ResidentsSummaryResponse(
+                total,
+                active,
+                blocked,
+                inactive,
+                blockedOrInactive,
+                occupiedUnits,
+                activeUnits.size()
+        );
     }
 
     @Transactional(readOnly = true)

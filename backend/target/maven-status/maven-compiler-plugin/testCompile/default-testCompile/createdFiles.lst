@@ -1,5 +1,7 @@
+com\accesolibre\mqtt\MqttTopicBuilderTest.class
+com\accesolibre\service\UserServiceSummaryTest.class
 com\accesolibre\service\GeofenceServiceTest.class
 com\accesolibre\service\SetupServiceTest.class
 com\accesolibre\service\UnitActivationFlowTest.class
-com\accesolibre\mqtt\MqttTopicBuilderTest.class
+com\accesolibre\service\UnitBatchServiceTest.class
 com\accesolibre\service\CompactQrCryptoServiceTest.class

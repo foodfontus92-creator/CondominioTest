@@ -1,6 +1,7 @@
 package com.accesolibre.dto.condo;
 
 import com.accesolibre.domain.entity.Condominium;
+import com.accesolibre.domain.enums.CommunityType;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -9,6 +10,7 @@ public record CondominiumResponse(
         UUID id,
         String code,
         String name,
+        CommunityType communityType,
         String address,
         String timezone,
         Integer hmacKeyVersion,
@@ -24,6 +26,7 @@ public record CondominiumResponse(
                 entity.getId(),
                 entity.getCode(),
                 entity.getName(),
+                entity.getCommunityType() != null ? entity.getCommunityType() : CommunityType.CONDOMINIUM,
                 entity.getAddress(),
                 entity.getTimezone(),
                 entity.getHmacKeyVersion(),

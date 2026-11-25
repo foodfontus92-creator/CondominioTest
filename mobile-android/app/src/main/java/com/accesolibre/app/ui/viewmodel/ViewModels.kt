@@ -11,6 +11,7 @@ import com.accesolibre.app.domain.model.DeviceKind
 import com.accesolibre.app.domain.model.IncomingCall
 import com.accesolibre.app.domain.model.IntercomCall
 import com.accesolibre.app.domain.model.Pass
+import com.accesolibre.app.domain.model.communityLabelsFor
 import com.accesolibre.app.domain.repository.AccessRepository
 import com.accesolibre.app.domain.repository.AuthRepository
 import com.accesolibre.app.domain.repository.IntercomRepository
@@ -95,15 +96,30 @@ data class LoginUiState(
     val condoCode: String = "",
     val email: String = "",
     val password: String = "",
+    val communityType: String = "CONDOMINIUM",
     val loading: Boolean = false,
     val errorMessage: String? = null,
 )
 
 class LoginViewModel(
     private val loginUseCase: LoginUseCase,
+    private val authRepository: AuthRepository,
 ) : ViewModel() {
-    private val _state = MutableStateFlow(LoginUiState())
+    private val _state = MutableStateFlow(
+        LoginUiState(communityType = authRepository.lastCommunityType.value)
+    )
     val state: StateFlow<LoginUiState> = _state.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            authRepository.refreshServerCommunityType()
+        }
+        viewModelScope.launch {
+            authRepository.lastCommunityType.collect { type ->
+                _state.update { it.copy(communityType = type) }
+            }
+        }
+    }
 
     fun onCondoCodeChange(v: String) = _state.update { it.copy(condoCode = v, errorMessage = null) }
     fun onEmailChange(v: String) = _state.update { it.copy(email = v, errorMessage = null) }
@@ -134,15 +150,30 @@ data class ActivateUnitUiState(
     val email: String = "",
     val phone: String = "",
     val password: String = "",
+    val communityType: String = "CONDOMINIUM",
     val loading: Boolean = false,
     val errorMessage: String? = null,
 )
 
 class ActivateUnitViewModel(
     private val activateUnitUseCase: ActivateUnitUseCase,
+    private val authRepository: AuthRepository,
 ) : ViewModel() {
-    private val _state = MutableStateFlow(ActivateUnitUiState())
+    private val _state = MutableStateFlow(
+        ActivateUnitUiState(communityType = authRepository.lastCommunityType.value)
+    )
     val state: StateFlow<ActivateUnitUiState> = _state.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            authRepository.refreshServerCommunityType()
+        }
+        viewModelScope.launch {
+            authRepository.lastCommunityType.collect { type ->
+                _state.update { it.copy(communityType = type) }
+            }
+        }
+    }
 
     fun onCodeChange(v: String) = _state.update { it.copy(activationCode = v.uppercase(), errorMessage = null) }
     fun onFullNameChange(v: String) = _state.update { it.copy(fullName = v, errorMessage = null) }
@@ -161,7 +192,10 @@ class ActivateUnitViewModel(
                 }
                 .onFailure { err ->
                     _state.update {
-                        it.copy(loading = false, errorMessage = err.message ?: "No se pudo activar el departamento")
+                        it.copy(
+                            loading = false,
+                            errorMessage = err.message ?: communityLabelsFor(s.communityType).activateErrorFallback,
+                        )
                     }
                 }
         }
@@ -175,7 +209,9 @@ data class HomeUiState(
     val openingKind: DeviceKind? = null,
     val feedbackSuccess: String? = null,
     val feedbackError: String? = null,
+    val blockName: String? = null,
     val unitNumber: String? = null,
+    val communityType: String = "CONDOMINIUM",
 )
 
 class HomeViewModel(
@@ -184,7 +220,13 @@ class HomeViewModel(
     private val openAccessUseCase: OpenAccessUseCase,
     private val syncPendingPassesUseCase: SyncPendingPassesUseCase,
 ) : ViewModel() {
-    private val _state = MutableStateFlow(HomeUiState(unitNumber = authRepository.unitSecret()?.unitNumber))
+    private val _state = MutableStateFlow(
+        HomeUiState(
+            blockName = authRepository.session.value?.blockName ?: authRepository.unitSecret()?.blockName,
+            unitNumber = authRepository.session.value?.unitNumber ?: authRepository.unitSecret()?.unitNumber,
+            communityType = authRepository.session.value?.communityType ?: "CONDOMINIUM",
+        )
+    )
     val state: StateFlow<HomeUiState> = _state.asStateFlow()
 
     init {
@@ -193,7 +235,14 @@ class HomeViewModel(
 
     fun refresh() {
         viewModelScope.launch {
-            _state.update { it.copy(loadingDevices = true) }
+            _state.update {
+                it.copy(
+                    loadingDevices = true,
+                    blockName = authRepository.session.value?.blockName ?: authRepository.unitSecret()?.blockName,
+                    unitNumber = authRepository.session.value?.unitNumber ?: authRepository.unitSecret()?.unitNumber,
+                    communityType = authRepository.session.value?.communityType ?: it.communityType,
+                )
+            }
             if (authRepository.unitSecret() == null) {
                 authRepository.refreshUnitSecret()
             }
@@ -204,7 +253,9 @@ class HomeViewModel(
                         it.copy(
                             devices = list.filter { d -> d.active },
                             loadingDevices = false,
-                            unitNumber = authRepository.unitSecret()?.unitNumber,
+                            blockName = authRepository.session.value?.blockName ?: authRepository.unitSecret()?.blockName,
+                            unitNumber = authRepository.session.value?.unitNumber ?: authRepository.unitSecret()?.unitNumber,
+                            communityType = authRepository.session.value?.communityType ?: it.communityType,
                         )
                     }
                 }
@@ -223,10 +274,11 @@ class HomeViewModel(
         val target = _state.value.devices.firstOrNull { it.matches(kind) }
         if (target == null) {
             val label = if (kind == DeviceKind.GATE) "portón vehicular" else "puerta peatonal"
+            val labels = communityLabelsFor(_state.value.communityType)
             _state.update {
                 it.copy(
                     feedbackSuccess = null,
-                    feedbackError = "No hay ningún dispositivo de $label configurado en tu condominio.",
+                    feedbackError = "No hay ningún dispositivo de $label configurado ${labels.inYourCommunity}.",
                 )
             }
             return
@@ -240,10 +292,11 @@ class HomeViewModel(
             openAccessUseCase(device.id)
                 .onSuccess { outcome ->
                     val dist = "%.0f".format(outcome.distanceMeters)
+                    val labels = communityLabelsFor(authRepository.session.value?.communityType ?: _state.value.communityType)
                     _state.update {
                         it.copy(
                             openingKind = null,
-                            feedbackSuccess = "${outcome.deviceName} abierto (${dist} m del condominio)",
+                            feedbackSuccess = "${outcome.deviceName} abierto (${dist} m ${labels.ofCommunity})",
                         )
                     }
                 }

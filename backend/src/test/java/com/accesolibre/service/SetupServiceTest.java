@@ -3,6 +3,7 @@ package com.accesolibre.service;
 import com.accesolibre.config.AppProperties;
 import com.accesolibre.domain.entity.Condominium;
 import com.accesolibre.domain.entity.User;
+import com.accesolibre.domain.enums.CommunityType;
 import com.accesolibre.domain.enums.UserRole;
 import com.accesolibre.dto.setup.SetupInitializeRequest;
 import com.accesolibre.dto.setup.SetupInitializeResponse;
@@ -63,6 +64,7 @@ class SetupServiceTest {
                 new Class<?>[]{CondominiumRepository.class},
                 (proxy, method, args) -> switch (method.getName()) {
                     case "existsByCodeIgnoreCase" -> condoExists;
+                    case "findAll" -> List.copyOf(savedCondos);
                     case "save" -> {
                         Condominium c = (Condominium) args[0];
                         if (c.getId() == null) {
@@ -84,10 +86,16 @@ class SetupServiceTest {
         userCount = 0L;
         SetupStatusResponse uninitialized = setupService.getStatus();
         assertThat(uninitialized.initialized()).isFalse();
+        assertThat(uninitialized.defaultCommunityType()).isEqualTo(CommunityType.CONDOMINIUM);
 
+        Condominium poblacion = new Condominium();
+        poblacion.setActive(true);
+        poblacion.setCommunityType(CommunityType.POBLACION);
+        savedCondos.add(poblacion);
         userCount = 1L;
         SetupStatusResponse initialized = setupService.getStatus();
         assertThat(initialized.initialized()).isTrue();
+        assertThat(initialized.defaultCommunityType()).isEqualTo(CommunityType.POBLACION);
     }
 
     @Test
@@ -98,9 +106,13 @@ class SetupServiceTest {
                 "Torre Norte",
                 "Av. Principal 123",
                 "America/Santiago",
+                null,
+                null,
+                null,
                 "Admin Principal",
                 "admin@torrenorte.local",
-                "SuperSecret123!"
+                "SuperSecret123!",
+                null
         );
 
         assertThatThrownBy(() -> setupService.initialize(request))
@@ -119,12 +131,16 @@ class SetupServiceTest {
     void initializeCreatesCondoWith64CharHexHmacAndSuperAdmin() {
         SetupInitializeRequest request = new SetupInitializeRequest(
                 "Torre-Norte",
-                "Condominio Torre Norte",
+                "Población Torre Norte",
                 "Av. Principal 123",
                 "America/Santiago",
+                -33.4489,
+                -70.6693,
+                200,
                 "Admin Principal",
                 "Admin@TorreNorte.local",
-                "SuperSecret123!"
+                "SuperSecret123!",
+                CommunityType.POBLACION
         );
 
         SetupInitializeResponse response = setupService.initialize(request);
@@ -132,12 +148,15 @@ class SetupServiceTest {
         assertThat(savedCondos).hasSize(1);
         Condominium savedCondo = savedCondos.get(0);
         assertThat(savedCondo.getCode()).isEqualTo("torre-norte");
-        assertThat(savedCondo.getName()).isEqualTo("Condominio Torre Norte");
+        assertThat(savedCondo.getName()).isEqualTo("Población Torre Norte");
+        assertThat(savedCondo.getCommunityType()).isEqualTo(CommunityType.POBLACION);
         assertThat(savedCondo.getAddress()).isEqualTo("Av. Principal 123");
         assertThat(savedCondo.getTimezone()).isEqualTo("America/Santiago");
         assertThat(savedCondo.getHmacSecret()).matches("^[0-9a-f]{64}$");
         assertThat(savedCondo.getHmacKeyVersion()).isEqualTo(1);
-        assertThat(savedCondo.getGeofenceRadiusMeters()).isEqualTo(150);
+        assertThat(savedCondo.getLatitude()).isEqualTo(-33.4489);
+        assertThat(savedCondo.getLongitude()).isEqualTo(-70.6693);
+        assertThat(savedCondo.getGeofenceRadiusMeters()).isEqualTo(200);
         assertThat(savedCondo.getActive()).isTrue();
 
         assertThat(savedUsers).hasSize(1);
@@ -154,7 +173,8 @@ class SetupServiceTest {
         assertThat(response.initialized()).isTrue();
         assertThat(response.condominiumId()).isEqualTo(savedCondo.getId());
         assertThat(response.condoCode()).isEqualTo("torre-norte");
-        assertThat(response.condoName()).isEqualTo("Condominio Torre Norte");
+        assertThat(response.condoName()).isEqualTo("Población Torre Norte");
+        assertThat(response.communityType()).isEqualTo(CommunityType.POBLACION);
         assertThat(response.adminUserId()).isEqualTo(savedUser.getId());
         assertThat(response.adminEmail()).isEqualTo("admin@torrenorte.local");
     }

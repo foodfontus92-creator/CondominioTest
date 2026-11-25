@@ -33,6 +33,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.accesolibre.app.domain.model.communityLabelsFor
 import com.accesolibre.app.ui.viewmodel.LoginViewModel
 
 @Composable
@@ -44,6 +45,7 @@ fun LoginScreen(
     onChangeServer: () -> Unit,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val labels = communityLabelsFor(state.communityType)
 
     Scaffold { padding ->
         Column(
@@ -77,7 +79,7 @@ fun LoginScreen(
             OutlinedTextField(
                 value = state.condoCode,
                 onValueChange = viewModel::onCondoCodeChange,
-                label = { Text("Código del condominio") },
+                label = { Text(labels.codeFieldLabel) },
                 placeholder = { Text("ej. torre-norte") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
@@ -127,7 +129,7 @@ fun LoginScreen(
                 enabled = !state.loading,
                 modifier = Modifier.fillMaxWidth().height(48.dp),
             ) {
-                Text("Activar departamento con código")
+                Text(labels.activateButtonLabel)
             }
 
             Spacer(Modifier.height(8.dp))

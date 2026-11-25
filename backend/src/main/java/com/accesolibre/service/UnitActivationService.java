@@ -82,7 +82,7 @@ public class UnitActivationService {
             activationCodeRepository.deactivateActiveByUnit(condoId, unitId);
         }
 
-        String code = generateUniqueCode(condo.getCode(), unit.getUnitNumber());
+        String code = generateUniqueCode(condo.getCode(), unit.effectiveBlockName(), unit.getUnitNumber());
         Instant expiresAt = Instant.now().plus(expiresInHours, ChronoUnit.HOURS);
 
         UnitActivationCode entity = new UnitActivationCode();
@@ -143,13 +143,16 @@ public class UnitActivationService {
         );
     }
 
-    private String generateUniqueCode(String condoCode, String unitNumber) {
+    private String generateUniqueCode(String condoCode, String blockName, String unitNumber) {
         String condoPart = sanitizeSegment(condoCode);
         String unitPart = sanitizeSegment(unitNumber);
+        String prefix = (blockName != null && !blockName.isBlank())
+                ? condoPart + "-" + sanitizeSegment(blockName) + "-" + unitPart
+                : condoPart + "-" + unitPart;
 
         for (int attempt = 0; attempt < 10; attempt++) {
             String digits = String.format(Locale.ROOT, "%04d", SECURE_RANDOM.nextInt(10_000));
-            String candidate = condoPart + "-" + unitPart + "-" + digits;
+            String candidate = prefix + "-" + digits;
             if (candidate.length() > 80) {
                 candidate = candidate.substring(candidate.length() - 80);
             }

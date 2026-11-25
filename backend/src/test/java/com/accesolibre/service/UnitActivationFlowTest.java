@@ -6,6 +6,7 @@ import com.accesolibre.domain.entity.RefreshToken;
 import com.accesolibre.domain.entity.Unit;
 import com.accesolibre.domain.entity.UnitActivationCode;
 import com.accesolibre.domain.entity.User;
+import com.accesolibre.domain.enums.CommunityType;
 import com.accesolibre.domain.enums.UserRole;
 import com.accesolibre.dto.auth.ActivateUnitRequest;
 import com.accesolibre.dto.auth.AuthResponse;
@@ -66,7 +67,8 @@ class UnitActivationFlowTest {
         Condominium condo = new Condominium();
         condo.setId(condoId);
         condo.setCode("00b");
-        condo.setName("Condominio 00B");
+        condo.setName("Población 00B");
+        condo.setCommunityType(CommunityType.POBLACION);
         condo.setHmacSecret("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");
         condo.setActive(true);
         condos.put(condoId, condo);
@@ -257,7 +259,11 @@ class UnitActivationFlowTest {
         assertThat(res1.refreshToken()).isNotBlank();
         assertThat(res1.user().role()).isEqualTo(UserRole.RESIDENT);
         assertThat(res1.user().unitId()).isEqualTo(unitId);
+        assertThat(res1.user().unitNumber()).isEqualTo("203");
+        assertThat(res1.user().blockName()).isNull();
         assertThat(res1.user().condominiumId()).isEqualTo(condoId);
+        assertThat(res1.communityType()).isEqualTo(CommunityType.POBLACION);
+        assertThat(res1.user().communityType()).isEqualTo(CommunityType.POBLACION);
         assertThat(codes.get(created.id()).getUsedCount()).isEqualTo(1);
         assertThat(codes.get(created.id()).getActive()).isTrue();
 
@@ -295,5 +301,20 @@ class UnitActivationFlowTest {
         assertThat(users.values()).allSatisfy(u -> assertThat(u.getActive()).isFalse());
         assertThat(refreshTokens).allSatisfy(rt -> assertThat(rt.getRevoked()).isTrue());
         assertThat(codes.get(code.id()).getActive()).isFalse();
+    }
+
+    @Test
+    void blockUnitActivationIncludesBlockInCodeAndAuthProfile() {
+        units.get(unitId).setBlockName("Block B");
+
+        UnitActivationCodeResponse created = unitActivationService.createActivationCode(
+                condoId, unitId, new CreateUnitActivationCodeRequest(2, 48, true));
+        assertThat(created.code()).matches("^00B-BLOCK-B-203-\\d{4}$");
+
+        AuthResponse res = authService.activateUnit(new ActivateUnitRequest(
+                created.code(), "Carlos Díaz", "carlos@familia.local", null, "ClaveSegura123"
+        ));
+        assertThat(res.user().blockName()).isEqualTo("Block B");
+        assertThat(res.user().unitNumber()).isEqualTo("203");
     }
 }

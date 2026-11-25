@@ -315,18 +315,18 @@ Sensor magnético (Reed Switch): contacto cerrado = portón cerrado. Si permanec
 
 - **Base URL Local:** `http://<LAN_HOST>/api/v1` (proxeada por `web-admin` Nginx hacia `backend:8080`).
 - **Configuración Inicial (Initial Setup Wizard):**
-  - `GET /api/v1/setup/status` (público): retorna `{"initialized": boolean}` verificando si existe al menos un usuario en la tabla `users`.
-  - `POST /api/v1/setup/initialize` (público únicamente mientras no existan usuarios): crea el primer condominio (generando `hmac_secret` aleatorio criptográficamente seguro de 64 caracteres hexadecimales) y el primer usuario `SUPER_ADMIN` con contraseña cifrada vía `PasswordEncoder`. Si ya existe al menos un usuario en `users`, rechaza cualquier petición con HTTP `403 Forbidden` (`El sistema ya fue inicializado`).
+  - `GET /api/v1/setup/status` (público): retorna `{"initialized": boolean, "defaultCommunityType": "CONDOMINIUM|POBLACION|VILLA|PASAJE"}` verificando si existe al menos un usuario en la tabla `users`.
+  - `POST /api/v1/setup/initialize` (público únicamente mientras no existan usuarios): crea el primer recinto residencial con su **dirección única, coordenadas GPS y geofence** (que aplican a todos sus blocks y portones), `communityType` (`CONDOMINIUM`, `POBLACION`, `VILLA`, `PASAJE`), `hmac_secret` aleatorio de 64 caracteres hexadecimales y el primer usuario `SUPER_ADMIN` con contraseña cifrada vía `PasswordEncoder`. Si ya existe al menos un usuario en `users`, rechaza cualquier petición con HTTP `403 Forbidden` (`El sistema ya fue inicializado`).
 - **Autenticación de Usuarios (Web Admin y App Android):**
-  - `POST /api/v1/auth/login` emite `accessToken` + `refreshToken` firmados con `JWT_SECRET` (exclusivo para clientes HTTP/WS; **nunca** utilizado en códigos QR). Los Refresh Tokens se almacenan hasheados (SHA-256) en PostgreSQL (`refresh_tokens`) con rotación y revocación real.
-  - `POST /api/v1/auth/activate-unit` (público): auto-registro de residente mediante código familiar (`<CONDO_CODE>-<UNIT_NUMBER>-<4_DIGITOS>`), validando vigencia y cupos (`used_count < max_uses`) y devolviendo tokens JWT estándar.
+  - `POST /api/v1/auth/login` emite `accessToken` + `refreshToken` firmados con `JWT_SECRET` (exclusivo para clientes HTTP/WS; **nunca** utilizado en códigos QR) e incluye `communityType` en `AuthResponse` y `user`. Los Refresh Tokens se almacenan hasheados (SHA-256) en PostgreSQL (`refresh_tokens`) con rotación y revocación real.
+  - `POST /api/v1/auth/activate-unit` (público): auto-registro de residente mediante código familiar (`<CONDO_CODE>-<UNIT_NUMBER>-<4_DIGITOS>`), validando vigencia y cupos (`used_count < max_uses`) y devolviendo tokens JWT estándar + `communityType`.
   - `POST /api/v1/auth/refresh`, `POST /api/v1/auth/logout`, `GET /api/v1/auth/me`.
   - Header estándar: `Authorization: Bearer <accessToken>`.
   - Roles soportados: `SUPER_ADMIN`, `CONDO_ADMIN`, `RESIDENT`.
 - **Recursos Principales (Multi-Tenant):**
-  - `/api/v1/condominiums` — Alta/gestión de condominios, coordenadas de geofencing y rotación de `hmac_secret`.
-  - `/api/v1/condos/{condoId}/units` — Gestión de unidades funcionales, estado de bloqueo (`blocked`), secreto derivado (`unit_secret`), extensiones de intercomunicador, emisión de códigos familiares (`POST .../{unitId}/activation-codes`) y revocación masiva por cambio de arrendatario (`POST .../{unitId}/revoke-residents`).
-  - `/api/v1/condos/{condoId}/users` — Gestión de administradores y residentes (incluyendo bloqueo/desbloqueo).
+  - `/api/v1/condominiums` — Alta/gestión de recintos (`CONDOMINIUM`, `POBLACION`, `VILLA`, `PASAJE`), coordenadas de geofencing y rotación de `hmac_secret`.
+  - `/api/v1/condos/{condoId}/units` — Gestión de unidades/viviendas agrupadas opcionalmente por `block_name` (`Block B`, `Block C`, `Pasaje`, etc.), creación masiva por Block (`POST .../units/batch` con `blockName` + `unitNumbers`, heredando dirección y GPS del recinto), estado de bloqueo (`blocked`), secreto derivado (`unit_secret`), extensiones de intercomunicador, emisión de códigos familiares (`POST .../{unitId}/activation-codes`) y revocación masiva (`POST .../{unitId}/revoke-residents`).
+  - `/api/v1/condos/{condoId}/users` y `/api/v1/condos/{condoId}/users/summary` — Gestión de administradores y residentes/vecinos (incluyendo bloqueo/desbloqueo y resumen en vivo de totales registrados, activos, bloqueados/inactivos y viviendas habitadas).
   - `/api/v1/condos/{condoId}/devices` — Registro de dispositivos ESP32, token QR público de citofonía, estado en vivo y comandos (`POST .../sync-config`).
   - `GET /api/v1/access-passes/unit-secret` — Entrega al residente autenticado su `unit_secret` derivado para emisión de QR offline.
   - `/api/v1/condos/{condoId}/access-passes` — Generación, registro offline (`/register`), validación HMAC (`/validate`), consulta y revocación (`/{passId}/revoke`) de pases QR compactos offline.
@@ -351,8 +351,8 @@ Esquema definido en [`backend/src/main/resources/db/migration/V1__init_schema.sq
 
 | Tabla | Rol en el Dominio | Clave de Aislamiento Multi-Tenant |
 | :--- | :--- | :--- |
-| `condominiums` | Inquilinos (condominios) y su `hmac_secret` versionado | `id` (raíz del tenant) |
-| `units` | Departamentos / lotes y extensión del intercomunicador | `condominium_id` + `UNIQUE (id, condominium_id)` |
+| `condominiums` | Inquilinos (condominios, poblaciones, villas, pasajes), `community_type` (V4), dirección/GPS únicos y su `hmac_secret` versionado | `id` (raíz del tenant) |
+| `units` | Departamentos / casas agrupados por `block_name` (V4) y extensión del intercomunicador | `condominium_id` + `UNIQUE (id, condominium_id)` |
 | `users` | Administradores y residentes autenticados | `condominium_id` + FK compuesta a `units` |
 | `iot_devices` | Controladores ESP32 (portones, puertas, intercomunicadores) | `condominium_id` + `UNIQUE (id, condominium_id)` |
 | `access_passes` | Pases QR compactos offline emitidos y su ciclo de vida | `condominium_id` + FKs compuestas a `units` y `users` |

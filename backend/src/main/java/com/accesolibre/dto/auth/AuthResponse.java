@@ -1,5 +1,6 @@
 package com.accesolibre.dto.auth;
 
+import com.accesolibre.domain.enums.CommunityType;
 import com.accesolibre.domain.enums.UserRole;
 
 import java.util.UUID;
@@ -10,15 +11,19 @@ public record AuthResponse(
         long accessTokenExpiresInSeconds,
         String refreshToken,
         long refreshTokenExpiresInSeconds,
+        CommunityType communityType,
         UserProfile user
 ) {
     public record UserProfile(
             UUID id,
             UUID condominiumId,
             UUID unitId,
+            String unitNumber,
+            String blockName,
             String email,
             String fullName,
-            UserRole role
+            UserRole role,
+            CommunityType communityType
     ) {
     }
 }

@@ -122,6 +122,7 @@ public class AccessPassService {
                 unit.getId(),
                 qrCryptoService.encodeUuidBase64Url(unit.getId()),
                 unit.getUnitNumber(),
+                unit.effectiveBlockName(),
                 unit.getUnitSecret(),
                 condo.getHmacKeyVersion(),
                 CANONICAL_QR_FORMAT,

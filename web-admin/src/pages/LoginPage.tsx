@@ -1,16 +1,23 @@
 import { FormEvent, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Navigate, useLocation } from 'react-router-dom';
+import type { CommunityType, SetupStatusResponse } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
+import { getCommunityLabels } from '../lib/communityLabels';
 
 interface LoginLocationState {
   condoCode?: string;
+  communityType?: CommunityType;
   setupCompleted?: boolean;
 }
 
 export default function LoginPage() {
   const { user, login } = useAuth();
+  const queryClient = useQueryClient();
   const location = useLocation();
   const locationState = (location.state as LoginLocationState | null) ?? null;
+  const setupStatus = queryClient.getQueryData<SetupStatusResponse>(['setup-status']);
+  const labels = getCommunityLabels(locationState?.communityType ?? setupStatus?.defaultCommunityType);
   const [condoCode, setCondoCode] = useState(
     () => locationState?.condoCode ?? localStorage.getItem('accesolibre.admin.lastCondoCode') ?? '',
   );
@@ -43,7 +50,7 @@ export default function LoginPage() {
             🔐
           </div>
           <h1 className="text-2xl font-bold text-slate-900">AccesoLibre</h1>
-          <p className="text-sm text-slate-500">Panel administrativo del condominio</p>
+          <p className="text-sm text-slate-500">Panel administrativo {labels.ofCommunity}</p>
         </div>
 
         {locationState?.setupCompleted && (
@@ -53,7 +60,7 @@ export default function LoginPage() {
         )}
 
         <div>
-          <label className="label" htmlFor="condo">Código del condominio</label>
+          <label className="label" htmlFor="condo">{labels.codeLabel}</label>
           <input id="condo" className="input" value={condoCode} onChange={(e) => setCondoCode(e.target.value)}
             placeholder="ej. torre-norte" required autoFocus />
         </div>

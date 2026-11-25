@@ -33,6 +33,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.accesolibre.app.domain.model.communityLabelsFor
 import com.accesolibre.app.ui.viewmodel.ActivateUnitViewModel
 
 @Composable
@@ -43,6 +44,7 @@ fun ActivateUnitScreen(
     onBackToLogin: () -> Unit,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val labels = communityLabelsFor(state.communityType)
 
     Scaffold { padding ->
         Column(
@@ -62,7 +64,7 @@ fun ActivateUnitScreen(
             )
             Spacer(Modifier.height(10.dp))
             Text(
-                text = "Activar departamento",
+                text = labels.activateScreenTitle,
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
             )
@@ -137,7 +139,7 @@ fun ActivateUnitScreen(
                         strokeWidth = 2.dp,
                     )
                 } else {
-                    Text("Activar departamento")
+                    Text(labels.activateScreenTitle)
                 }
             }
 

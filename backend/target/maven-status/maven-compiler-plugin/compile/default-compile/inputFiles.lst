@@ -22,6 +22,7 @@ U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\domain\entity\Un
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\domain\entity\User.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\domain\enums\AccessMethod.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\domain\enums\AccessResult.java
+U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\domain\enums\CommunityType.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\domain\enums\DeviceStatus.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\domain\enums\DeviceType.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\domain\enums\IntercomCallStatus.java
@@ -58,6 +59,8 @@ U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\qr\ValidateQ
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\setup\SetupInitializeRequest.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\setup\SetupInitializeResponse.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\setup\SetupStatusResponse.java
+U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\unit\BatchCreateUnitsRequest.java
+U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\unit\BatchCreateUnitsResponse.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\unit\CreateUnitActivationCodeRequest.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\unit\CreateUnitRequest.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\unit\RevokeUnitResidentsResponse.java
@@ -65,6 +68,7 @@ U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\unit\UnitAct
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\unit\UnitResponse.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\unit\UpdateUnitRequest.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\user\CreateUserRequest.java
+U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\user\ResidentsSummaryResponse.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\user\UpdateUserRequest.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\dto\user\UserResponse.java
 U:\My_project\accesolibre\backend\src\main\java\com\accesolibre\exception\AccessDeniedDomainException.java

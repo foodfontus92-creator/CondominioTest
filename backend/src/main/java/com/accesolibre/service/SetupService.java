@@ -2,11 +2,13 @@ package com.accesolibre.service;
 
 import com.accesolibre.domain.entity.Condominium;
 import com.accesolibre.domain.entity.User;
+import com.accesolibre.domain.enums.CommunityType;
 import com.accesolibre.domain.enums.UserRole;
 import com.accesolibre.dto.setup.SetupInitializeRequest;
 import com.accesolibre.dto.setup.SetupInitializeResponse;
 import com.accesolibre.dto.setup.SetupStatusResponse;
 import com.accesolibre.exception.AccessDeniedDomainException;
+import com.accesolibre.exception.BadRequestException;
 import com.accesolibre.exception.ConflictException;
 import com.accesolibre.repository.CondominiumRepository;
 import com.accesolibre.repository.UserRepository;
@@ -41,7 +43,16 @@ public class SetupService {
 
     @Transactional(readOnly = true)
     public SetupStatusResponse getStatus() {
-        return new SetupStatusResponse(userRepository.count() > 0);
+        boolean initialized = userRepository.count() > 0;
+        CommunityType defaultCommunityType = CommunityType.CONDOMINIUM;
+        if (initialized) {
+            defaultCommunityType = condominiumRepository.findAll().stream()
+                    .filter(c -> Boolean.TRUE.equals(c.getActive()))
+                    .map(c -> c.getCommunityType() != null ? c.getCommunityType() : CommunityType.CONDOMINIUM)
+                    .findFirst()
+                    .orElse(CommunityType.CONDOMINIUM);
+        }
+        return new SetupStatusResponse(initialized, defaultCommunityType);
     }
 
     @Transactional
@@ -62,14 +73,21 @@ public class SetupService {
 
         String generatedSecret = compactQrCryptoService.generateRandomHmacSecretHex();
 
+        if ((request.latitude() == null) != (request.longitude() == null)) {
+            throw new BadRequestException("Debes enviar latitud y longitud juntas");
+        }
+
         Condominium condo = new Condominium();
         condo.setCode(normalizedCode);
         condo.setName(request.condoName().trim());
+        condo.setCommunityType(request.communityType() != null ? request.communityType() : CommunityType.CONDOMINIUM);
         condo.setAddress(request.address() != null && !request.address().isBlank() ? request.address().trim() : null);
         condo.setTimezone(request.timezone() != null && !request.timezone().isBlank() ? request.timezone().trim() : "UTC");
         condo.setHmacSecret(generatedSecret);
         condo.setHmacKeyVersion(1);
-        condo.setGeofenceRadiusMeters(150);
+        condo.setLatitude(request.latitude());
+        condo.setLongitude(request.longitude());
+        condo.setGeofenceRadiusMeters(request.geofenceRadiusMeters() != null ? request.geofenceRadiusMeters() : 150);
         condo.setActive(true);
         Condominium savedCondo = condominiumRepository.save(condo);
 
@@ -89,6 +107,7 @@ public class SetupService {
                 savedCondo.getId(),
                 savedCondo.getCode(),
                 savedCondo.getName(),
+                savedCondo.getCommunityType(),
                 savedAdmin.getId(),
                 savedAdmin.getEmail()
         );

@@ -21,6 +21,8 @@ interface SettingsRepository {
 
 interface AuthRepository {
     val session: StateFlow<Session?>
+    val lastCommunityType: StateFlow<String>
+    suspend fun refreshServerCommunityType()
     suspend fun login(condominiumCode: String, email: String, password: String): Result<Session>
     suspend fun activateUnit(
         activationCode: String,

@@ -1,3 +1,4 @@
+com\accesolibre\dto\user\ResidentsSummaryResponse.class
 com\accesolibre\mqtt\MqttTelemetryListener$3.class
 com\accesolibre\repository\RefreshTokenRepository.class
 com\accesolibre\domain\entity\UnitActivationCode.class
@@ -32,6 +33,7 @@ com\accesolibre\dto\unit\UnitActivationCodeResponse.class
 com\accesolibre\controller\IotDeviceController.class
 com\accesolibre\domain\entity\AccessPass.class
 com\accesolibre\dto\device\UpdateDeviceRequest.class
+com\accesolibre\dto\unit\BatchCreateUnitsResponse.class
 com\accesolibre\mqtt\MqttTopicBuilder$ParsedTopic.class
 com\accesolibre\repository\CondominiumRepository.class
 com\accesolibre\controller\UserController.class
@@ -105,7 +107,9 @@ com\accesolibre\dto\intercom\InitiateIntercomCallRequest.class
 com\accesolibre\controller\AuthController.class
 com\accesolibre\dto\intercom\IntercomCallResponse.class
 com\accesolibre\dto\device\CreateDeviceRequest.class
+com\accesolibre\domain\enums\CommunityType.class
 com\accesolibre\domain\enums\AccessResult.class
+com\accesolibre\dto\unit\BatchCreateUnitsRequest.class
 com\accesolibre\mqtt\MqttGatewayService.class
 com\accesolibre\dto\intercom\IntercomSignalEvent.class
 com\accesolibre\dto\auth\LoginRequest.class

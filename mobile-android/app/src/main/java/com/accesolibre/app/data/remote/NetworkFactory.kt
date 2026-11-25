@@ -38,6 +38,7 @@ class NetworkFactory(
         val skipAuth = path.endsWith("/auth/login") ||
             path.endsWith("/auth/activate-unit") ||
             path.endsWith("/auth/refresh") ||
+            path.endsWith("/setup/status") ||
             path.endsWith("/actuator/health")
         val token = storage.accessToken
         val req = if (!skipAuth && !token.isNullOrBlank()) {
@@ -94,6 +95,20 @@ class NetworkFactory(
 
                     storage.accessToken = parsed.accessToken
                     storage.refreshToken = parsed.refreshToken
+                    val refreshedType = parsed.user.communityType ?: parsed.communityType
+                    storage.readSession()?.let { current ->
+                        storage.saveSession(
+                            current.copy(
+                                communityType = refreshedType ?: current.communityType,
+                                blockName = parsed.user.blockName ?: current.blockName,
+                                unitNumber = parsed.user.unitNumber ?: current.unitNumber,
+                            )
+                        )
+                    } ?: run {
+                        if (!refreshedType.isNullOrBlank()) {
+                            storage.lastCommunityType = refreshedType
+                        }
+                    }
                     return response.request.newBuilder()
                         .header("Authorization", "Bearer ${parsed.accessToken}")
                         .build()

@@ -1,5 +1,7 @@
 package com.accesolibre.app.domain.qr
 
+import com.accesolibre.app.domain.model.communityLabelsFor
+import com.accesolibre.app.domain.model.formatUnitDisplay
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
@@ -37,5 +39,30 @@ class CompactQrTest {
             fail("expected IllegalArgumentException")
         } catch (_: IllegalArgumentException) {
         }
+    }
+
+    @Test
+    fun adaptsCommunityLabelsForAllSupportedEnclosureTypes() {
+        val condo = communityLabelsFor("CONDOMINIUM")
+        assertEquals("del condominio", condo.ofCommunity)
+        assertEquals("Activar departamento con código", condo.activateButtonLabel)
+        assertEquals("Unidad", condo.unitLabel)
+
+        val poblacion = communityLabelsFor("POBLACION")
+        assertEquals("de la población", poblacion.ofCommunity)
+        assertEquals("Activar vivienda con código", poblacion.activateButtonLabel)
+        assertEquals("Casa / Sitio", poblacion.unitLabel)
+
+        val villa = communityLabelsFor("VILLA")
+        assertEquals("de la villa", villa.ofCommunity)
+        assertEquals("Activar vivienda", villa.activateScreenTitle)
+
+        val pasaje = communityLabelsFor("PASAJE")
+        assertEquals("del pasaje", pasaje.ofCommunity)
+        assertEquals("en tu pasaje", pasaje.inYourCommunity)
+
+        assertEquals("Block B · Depto 203", formatUnitDisplay("POBLACION", "Block B", "203"))
+        assertEquals("Torre A · Depto 402", formatUnitDisplay("CONDOMINIUM", "Torre A", "402"))
+        assertEquals("Pasaje Sur · Casa 15", formatUnitDisplay("VILLA", "Pasaje Sur", "15"))
     }
 }

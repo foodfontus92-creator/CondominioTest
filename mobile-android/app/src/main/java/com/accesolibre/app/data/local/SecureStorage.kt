@@ -27,6 +27,14 @@ class SecureStorage(context: Context) {
             }.apply()
         }
 
+    var lastCommunityType: String?
+        get() = prefs.getString(KEY_LAST_COMMUNITY_TYPE, null)
+        set(value) {
+            prefs.edit().apply {
+                if (value == null) remove(KEY_LAST_COMMUNITY_TYPE) else putString(KEY_LAST_COMMUNITY_TYPE, value)
+            }.apply()
+        }
+
     var accessToken: String?
         get() = prefs.getString(KEY_ACCESS_TOKEN, null)
         set(value) {
@@ -48,9 +56,13 @@ class SecureStorage(context: Context) {
             .putString(KEY_USER_ID, session.userId)
             .putString(KEY_CONDO_ID, session.condominiumId)
             .putString(KEY_UNIT_ID, session.unitId)
+            .putString(KEY_UNIT_NUMBER, session.unitNumber)
+            .putString(KEY_BLOCK_NAME, session.blockName)
             .putString(KEY_EMAIL, session.email)
             .putString(KEY_FULL_NAME, session.fullName)
             .putString(KEY_ROLE, session.role)
+            .putString(KEY_COMMUNITY_TYPE, session.communityType)
+            .putString(KEY_LAST_COMMUNITY_TYPE, session.communityType)
             .apply()
     }
 
@@ -68,6 +80,9 @@ class SecureStorage(context: Context) {
             email = email,
             fullName = fullName,
             role = role,
+            communityType = prefs.getString(KEY_COMMUNITY_TYPE, null) ?: lastCommunityType ?: "CONDOMINIUM",
+            blockName = prefs.getString(KEY_BLOCK_NAME, null),
+            unitNumber = prefs.getString(KEY_UNIT_NUMBER, null),
         )
     }
 
@@ -76,6 +91,7 @@ class SecureStorage(context: Context) {
             .putString(KEY_SECRET_CONDO_ID, secret.condominiumId)
             .putString(KEY_SECRET_UNIT_ID, secret.unitId)
             .putString(KEY_SECRET_UNIT_NUMBER, secret.unitNumber)
+            .putString(KEY_SECRET_BLOCK_NAME, secret.blockName)
             .putString(KEY_UNIT_SECRET_HEX, secret.secretHex)
             .putInt(KEY_HMAC_KEY_VERSION, secret.hmacKeyVersion)
             .apply()
@@ -85,9 +101,10 @@ class SecureStorage(context: Context) {
         val condoId = prefs.getString(KEY_SECRET_CONDO_ID, null) ?: return null
         val unitId = prefs.getString(KEY_SECRET_UNIT_ID, null) ?: return null
         val unitNumber = prefs.getString(KEY_SECRET_UNIT_NUMBER, null) ?: return null
+        val blockName = prefs.getString(KEY_SECRET_BLOCK_NAME, null)
         val hex = prefs.getString(KEY_UNIT_SECRET_HEX, null) ?: return null
         val version = prefs.getInt(KEY_HMAC_KEY_VERSION, 1)
-        return UnitSecret(condoId, unitId, unitNumber, hex, version)
+        return UnitSecret(condoId, unitId, unitNumber, blockName, hex, version)
     }
 
     fun clearAuth() {
@@ -97,12 +114,16 @@ class SecureStorage(context: Context) {
             .remove(KEY_USER_ID)
             .remove(KEY_CONDO_ID)
             .remove(KEY_UNIT_ID)
+            .remove(KEY_UNIT_NUMBER)
+            .remove(KEY_BLOCK_NAME)
             .remove(KEY_EMAIL)
             .remove(KEY_FULL_NAME)
             .remove(KEY_ROLE)
+            .remove(KEY_COMMUNITY_TYPE)
             .remove(KEY_SECRET_CONDO_ID)
             .remove(KEY_SECRET_UNIT_ID)
             .remove(KEY_SECRET_UNIT_NUMBER)
+            .remove(KEY_SECRET_BLOCK_NAME)
             .remove(KEY_UNIT_SECRET_HEX)
             .remove(KEY_HMAC_KEY_VERSION)
             .apply()
@@ -115,12 +136,17 @@ class SecureStorage(context: Context) {
         private const val KEY_USER_ID = "user_id"
         private const val KEY_CONDO_ID = "condo_id"
         private const val KEY_UNIT_ID = "unit_id"
+        private const val KEY_UNIT_NUMBER = "unit_number"
+        private const val KEY_BLOCK_NAME = "block_name"
         private const val KEY_EMAIL = "email"
         private const val KEY_FULL_NAME = "full_name"
         private const val KEY_ROLE = "role"
+        private const val KEY_COMMUNITY_TYPE = "community_type"
+        private const val KEY_LAST_COMMUNITY_TYPE = "last_community_type"
         private const val KEY_SECRET_CONDO_ID = "secret_condo_id"
         private const val KEY_SECRET_UNIT_ID = "secret_unit_id"
         private const val KEY_SECRET_UNIT_NUMBER = "secret_unit_number"
+        private const val KEY_SECRET_BLOCK_NAME = "secret_block_name"
         private const val KEY_UNIT_SECRET_HEX = "unit_secret_hex"
         private const val KEY_HMAC_KEY_VERSION = "hmac_key_version"
     }

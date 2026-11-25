@@ -36,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.accesolibre.app.di.AppContainer
+import com.accesolibre.app.domain.model.communityLabelsFor
 import com.accesolibre.app.ui.screens.ActivateUnitScreen
 import com.accesolibre.app.ui.screens.HistoryScreen
 import com.accesolibre.app.ui.screens.HomeScreen
@@ -93,7 +94,9 @@ private fun AccesoLibreRoot(container: AppContainer) {
         }
         session == null && activatingUnit -> {
             val vm: ActivateUnitViewModel = viewModel(
-                factory = simpleFactory { ActivateUnitViewModel(container.activateUnitUseCase) }
+                factory = simpleFactory {
+                    ActivateUnitViewModel(container.activateUnitUseCase, container.authRepository)
+                }
             )
             ActivateUnitScreen(
                 serverUrl = serverUrl.orEmpty(),
@@ -104,7 +107,9 @@ private fun AccesoLibreRoot(container: AppContainer) {
         }
         session == null -> {
             val vm: LoginViewModel = viewModel(
-                factory = simpleFactory { LoginViewModel(container.loginUseCase) }
+                factory = simpleFactory {
+                    LoginViewModel(container.loginUseCase, container.authRepository)
+                }
             )
             LoginScreen(
                 serverUrl = serverUrl.orEmpty(),
@@ -219,13 +224,14 @@ private fun AccesoLibreRoot(container: AppContainer) {
             // Global real-time alert when a visitor rings the unit while resident is on any tab
             incomingCall?.let { call ->
                 if (selectedTab != MainTab.INTERCOM) {
+                    val labels = communityLabelsFor(currentSession.communityType)
                     AlertDialog(
                         onDismissRequest = { container.stompClient.dismissIncomingCall() },
                         title = { Text("Visita en ${call.deviceName ?: "Puerta"}") },
                         text = {
                             Text(
                                 buildString {
-                                    append("${call.visitorName} está llamando a tu unidad.")
+                                    append("${call.visitorName} ${labels.incomingCallSuffix}")
                                     call.visitorNote?.takeIf { it.isNotBlank() }?.let { append("\nNota: $it") }
                                 }
                             )

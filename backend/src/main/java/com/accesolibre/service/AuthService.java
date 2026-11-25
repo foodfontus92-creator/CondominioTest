@@ -5,6 +5,7 @@ import com.accesolibre.domain.entity.RefreshToken;
 import com.accesolibre.domain.entity.Unit;
 import com.accesolibre.domain.entity.UnitActivationCode;
 import com.accesolibre.domain.entity.User;
+import com.accesolibre.domain.enums.CommunityType;
 import com.accesolibre.domain.enums.UserRole;
 import com.accesolibre.dto.auth.ActivateUnitRequest;
 import com.accesolibre.dto.auth.AuthResponse;
@@ -84,7 +85,8 @@ public class AuthService {
         user.setLastLoginAt(Instant.now());
         userRepository.save(user);
 
-        return issueTokenPair(user);
+        Unit unit = resolveUnit(user);
+        return issueTokenPair(user, resolveCommunityType(condo), unit);
     }
 
     @Transactional
@@ -107,21 +109,24 @@ public class AuthService {
 
         Condominium condo = condominiumRepository.findById(codeEntity.getCondominiumId())
                 .filter(c -> Boolean.TRUE.equals(c.getActive()))
-                .orElseThrow(() -> new BadRequestException("El condominio asociado al código no está activo"));
+                .orElseThrow(() -> new BadRequestException("El recinto asociado al código no está activo"));
+
+        CommunityType communityType = resolveCommunityType(condo);
+        String dwellingLabel = communityType == CommunityType.CONDOMINIUM ? "departamento" : "vivienda";
 
         Unit unit = unitRepository.findByIdAndCondominiumId(codeEntity.getUnitId(), condo.getId())
-                .orElseThrow(() -> new BadRequestException("El departamento asociado al código no existe"));
+                .orElseThrow(() -> new BadRequestException("La " + dwellingLabel + " asociada al código no existe"));
 
         if (!Boolean.TRUE.equals(unit.getActive()) || Boolean.TRUE.equals(unit.getBlocked())) {
             throw new AccessDeniedDomainException(
                     "DENIED_UNIT_BLOCKED",
-                    "El departamento se encuentra inactivo o bloqueado"
+                    "La " + dwellingLabel + " se encuentra inactiva o bloqueada"
             );
         }
 
         String normalizedEmail = request.email().trim().toLowerCase(Locale.ROOT);
         if (userRepository.existsByCondominiumIdAndEmailIgnoreCase(condo.getId(), normalizedEmail)) {
-            throw new ConflictException("Ya existe una cuenta registrada con ese correo en este condominio");
+            throw new ConflictException("Ya existe una cuenta registrada con ese correo en este recinto");
         }
 
         User resident = new User();
@@ -144,7 +149,7 @@ public class AuthService {
         }
         activationCodeRepository.save(codeEntity);
 
-        return issueTokenPair(savedResident);
+        return issueTokenPair(savedResident, communityType, unit);
     }
 
     @Transactional
@@ -180,7 +185,7 @@ public class AuthService {
         stored.setRevokedAt(now);
         refreshTokenRepository.save(stored);
 
-        return issueTokenPair(user);
+        return issueTokenPair(user, resolveCommunityType(user.getCondominiumId()), resolveUnit(user));
     }
 
     @Transactional
@@ -200,10 +205,10 @@ public class AuthService {
         AuthenticatedUser principal = tenantAccessGuard.currentUser();
         User user = userRepository.findByIdAndCondominiumId(principal.userId(), principal.condominiumId())
                 .orElseThrow(() -> new UnauthorizedException("Authenticated user no longer exists"));
-        return toUserProfile(user);
+        return toUserProfile(user, resolveCommunityType(user.getCondominiumId()), resolveUnit(user));
     }
 
-    private AuthResponse issueTokenPair(User user) {
+    private AuthResponse issueTokenPair(User user, CommunityType communityType, Unit unit) {
         String accessToken = jwtService.generateAccessToken(user);
         String refreshTokenRaw = jwtService.generateRefreshToken(user);
         Instant refreshExpiresAt = Instant.now().plusSeconds(jwtService.getRefreshTokenTtlSeconds());
@@ -222,18 +227,41 @@ public class AuthService {
                 jwtService.getAccessTokenTtlSeconds(),
                 refreshTokenRaw,
                 jwtService.getRefreshTokenTtlSeconds(),
-                toUserProfile(user)
+                communityType,
+                toUserProfile(user, communityType, unit)
         );
     }
 
-    private AuthResponse.UserProfile toUserProfile(User user) {
+    private AuthResponse.UserProfile toUserProfile(User user, CommunityType communityType, Unit unit) {
         return new AuthResponse.UserProfile(
                 user.getId(),
                 user.getCondominiumId(),
                 user.getUnitId(),
+                unit != null ? unit.getUnitNumber() : null,
+                unit != null ? unit.effectiveBlockName() : null,
                 user.getEmail(),
                 user.getFullName(),
-                user.getRole()
+                user.getRole(),
+                communityType
         );
+    }
+
+    private Unit resolveUnit(User user) {
+        if (user.getUnitId() == null) {
+            return null;
+        }
+        return unitRepository.findByIdAndCondominiumId(user.getUnitId(), user.getCondominiumId()).orElse(null);
+    }
+
+    private CommunityType resolveCommunityType(Condominium condo) {
+        return (condo != null && condo.getCommunityType() != null)
+                ? condo.getCommunityType()
+                : CommunityType.CONDOMINIUM;
+    }
+
+    private CommunityType resolveCommunityType(java.util.UUID condominiumId) {
+        return condominiumRepository.findById(condominiumId)
+                .map(this::resolveCommunityType)
+                .orElse(CommunityType.CONDOMINIUM);
     }
 }

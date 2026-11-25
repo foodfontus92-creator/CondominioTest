@@ -5,6 +5,7 @@ import type { AccessLog, AccessLogFilters, AccessResult } from '../api/types';
 import { Badge, EmptyState, ErrorBox, Field, PageHeader, Spinner } from '../components/ui';
 import { useDevices, useTenant, useUnits, useUsers } from '../context/TenantContext';
 import { useToast } from '../context/ToastContext';
+import { formatUnitLabel, useCommunityLabels } from '../lib/communityLabels';
 import { downloadCsv, formatDateTime, methodGroups, methodLabel, resultLabel } from '../lib/format';
 import { errMsg } from '../lib/hooks';
 
@@ -58,6 +59,7 @@ function localTimestamp(iso: string): string {
 
 export default function AuditPage() {
   const { condoId } = useTenant();
+  const labels = useCommunityLabels();
   const units = useUnits();
   const devices = useDevices();
   const users = useUsers();
@@ -77,7 +79,7 @@ export default function AuditPage() {
     placeholderData: keepPreviousData,
   });
 
-  const unitName = useMemo(() => new Map((units.data ?? []).map((u) => [u.id, u.unitNumber])), [units.data]);
+  const unitName = useMemo(() => new Map((units.data ?? []).map((u) => [u.id, formatUnitLabel(u)])), [units.data]);
   const deviceName = useMemo(() => new Map((devices.data ?? []).map((d) => [d.id, d.name])), [devices.data]);
   const userName = useMemo(() => new Map((users.data ?? []).map((u) => [u.id, u.fullName])), [users.data]);
 
@@ -158,10 +160,10 @@ export default function AuditPage() {
           <Field label="Hasta (inclusive)">
             <input type="date" className="input" value={draft.to} onChange={(e) => setDraft({ ...draft, to: e.target.value })} />
           </Field>
-          <Field label="Unidad">
+          <Field label={labels.unitSingular}>
             <select className="input" value={draft.unitId} onChange={(e) => setDraft({ ...draft, unitId: e.target.value })}>
               <option value="">Todas</option>
-              {(units.data ?? []).map((u) => <option key={u.id} value={u.id}>{u.unitNumber}</option>)}
+              {(units.data ?? []).map((u) => <option key={u.id} value={u.id}>{formatUnitLabel(u)}</option>)}
             </select>
           </Field>
           <Field label="Método de acceso">
@@ -198,7 +200,7 @@ export default function AuditPage() {
             <thead className="bg-slate-50">
               <tr>
                 <th className="th">Fecha</th>
-                <th className="th">Unidad</th>
+                <th className="th">{labels.unitSingular}</th>
                 <th className="th">Dispositivo</th>
                 <th className="th">Método</th>
                 <th className="th">Resultado</th>
@@ -220,7 +222,7 @@ export default function AuditPage() {
                   <td className="td text-xs text-slate-500">
                     {l.offlineValidated && <Badge tone="blue">Validado offline</Badge>}
                     {typeof l.details?.distance_meters === 'number' && (
-                      <span className="ml-1">{Math.round(l.details.distance_meters)} m del condominio</span>
+                      <span className="ml-1">{Math.round(l.details.distance_meters)} m {labels.ofCommunity}</span>
                     )}
                   </td>
                 </tr>

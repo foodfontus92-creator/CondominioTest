@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { logApi } from '../api/endpoints';
 import { Badge, ErrorBox, PageHeader, Spinner } from '../components/ui';
 import { useDevices, useTenant, useUnits, useUsers } from '../context/TenantContext';
+import { formatUnitLabel, useCommunityLabels } from '../lib/communityLabels';
 import { effectiveDeviceState, formatDateTime, hasGateAlert, methodLabel, resultLabel } from '../lib/format';
 import { useNow } from '../lib/hooks';
 
@@ -20,6 +21,7 @@ function Card({ label, value, hint, tone, to }: { label: string; value: string |
 
 export default function DashboardPage() {
   const { condoId, condo } = useTenant();
+  const labels = useCommunityLabels();
   const units = useUnits();
   const users = useUsers();
   const devices = useDevices();
@@ -44,7 +46,7 @@ export default function DashboardPage() {
 
   const unitList = units.data ?? [];
   const deviceList = devices.data ?? [];
-  const unitName = new Map(unitList.map((u) => [u.id, u.unitNumber]));
+  const unitName = new Map(unitList.map((u) => [u.id, formatUnitLabel(u)]));
   const online = deviceList.filter((d) => effectiveDeviceState(d, now) === 'ONLINE').length;
   const alerts = deviceList.filter(hasGateAlert);
   const total24 = last24.data?.totalElements ?? 0;
@@ -55,12 +57,12 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <PageHeader title={condo ? condo.name : 'Resumen'} subtitle="Estado general del condominio en tiempo real." />
+      <PageHeader title={condo ? condo.name : 'Resumen'} subtitle={`Estado general ${labels.ofCommunity} en tiempo real.`} />
       {error && <ErrorBox error={error} />}
 
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-        <Card label="Unidades" value={unitList.length} hint={`${unitList.filter((u) => u.blocked).length} bloqueadas`} to="/unidades" />
-        <Card label="Residentes" value={(users.data ?? []).filter((u) => u.role === 'RESIDENT').length} to="/residentes" />
+        <Card label={labels.unitsNav} value={unitList.length} hint={`${unitList.filter((u) => u.blocked).length} bloqueadas`} to="/unidades" />
+        <Card label={labels.residentsNav} value={(users.data ?? []).filter((u) => u.role === 'RESIDENT').length} to="/residentes" />
         <Card label="Dispositivos online" value={`${online} / ${deviceList.filter((d) => d.active).length}`}
           tone={online === deviceList.filter((d) => d.active).length && deviceList.length > 0 ? 'green' : 'red'} to="/dispositivos" />
         <Card label="Alertas de portón" value={alerts.length} tone={alerts.length > 0 ? 'red' : 'green'}
@@ -80,7 +82,7 @@ export default function DashboardPage() {
         {recent.data && recent.data.content.length > 0 && (
           <table className="min-w-full divide-y divide-slate-200">
             <thead className="bg-slate-50">
-              <tr><th className="th">Fecha</th><th className="th">Unidad</th><th className="th">Método</th><th className="th">Resultado</th></tr>
+              <tr><th className="th">Fecha</th><th className="th">{labels.unitSingular}</th><th className="th">Método</th><th className="th">Resultado</th></tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {recent.data.content.map((l) => (

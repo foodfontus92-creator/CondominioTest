@@ -6,6 +6,7 @@ import { Badge, EmptyState, ErrorBox, Field, Modal, PageHeader, Spinner } from '
 import ReasonModal from '../components/ReasonModal';
 import { useTenant, useUnits, useUsers } from '../context/TenantContext';
 import { useToast } from '../context/ToastContext';
+import { formatUnitLabel, useCommunityLabels } from '../lib/communityLabels';
 import { formatDateTime } from '../lib/format';
 import { errMsg } from '../lib/hooks';
 
@@ -13,19 +14,34 @@ type StatusFilter = 'all' | 'blocked' | 'inactive';
 
 export default function UnitsPage() {
   const { condoId, condo } = useTenant();
+  const labels = useCommunityLabels();
   const units = useUnits();
   const users = useUsers();
   const toast = useToast();
   const queryClient = useQueryClient();
 
   const [search, setSearch] = useState('');
+  const [blockFilter, setBlockFilter] = useState('');
   const [filter, setFilter] = useState<StatusFilter>('all');
   const [editing, setEditing] = useState<Unit | 'new' | null>(null);
+  const [creatingBatch, setCreatingBatch] = useState(false);
   const [blocking, setBlocking] = useState<Unit | null>(null);
   const [familyCodeUnit, setFamilyCodeUnit] = useState<Unit | null>(null);
   const [turnoverUnit, setTurnoverUnit] = useState<Unit | null>(null);
 
-  const refresh = () => queryClient.invalidateQueries({ queryKey: ['units', condoId] });
+  const refresh = () => {
+    void queryClient.invalidateQueries({ queryKey: ['units', condoId] });
+    void queryClient.invalidateQueries({ queryKey: ['users-summary', condoId] });
+  };
+
+  const blockOptions = useMemo(() => {
+    const names = new Set<string>();
+    for (const u of units.data ?? []) {
+      const b = (u.blockName ?? u.towerOrBlock ?? '').trim();
+      if (b) names.add(b);
+    }
+    return Array.from(names).sort((a, b) => a.localeCompare(b, 'es'));
+  }, [units.data]);
 
   const residentsByUnit = useMemo(() => {
     const map = new Map<string, string[]>();
@@ -41,7 +57,7 @@ export default function UnitsPage() {
     mutationFn: ({ unit, body }: { unit: Unit; body: Parameters<typeof unitApi.update>[2] }) =>
       unitApi.update(condoId, unit.id, body),
     onSuccess: () => {
-      void refresh();
+      refresh();
       setBlocking(null);
     },
     onError: (e) => toast.push('error', errMsg(e)),
@@ -50,16 +66,19 @@ export default function UnitsPage() {
   const rows = useMemo(() => {
     const q = search.trim().toLowerCase();
     return (units.data ?? []).filter((u) => {
+      const block = (u.blockName ?? u.towerOrBlock ?? '').trim();
+      if (blockFilter === '__NONE__' && block !== '') return false;
+      if (blockFilter && blockFilter !== '__NONE__' && block !== blockFilter) return false;
       if (filter === 'blocked' && !u.blocked) return false;
       if (filter === 'inactive' && u.active) return false;
       if (!q) return true;
       return (
         u.unitNumber.toLowerCase().includes(q) ||
-        (u.towerOrBlock ?? '').toLowerCase().includes(q) ||
+        block.toLowerCase().includes(q) ||
         (residentsByUnit.get(u.id) ?? []).some((n) => n.toLowerCase().includes(q))
       );
     });
-  }, [units.data, search, filter, residentsByUnit]);
+  }, [units.data, search, blockFilter, filter, residentsByUnit]);
 
   const toggleBlock = (unit: Unit) => {
     if (unit.blocked) {
@@ -85,14 +104,28 @@ export default function UnitsPage() {
   return (
     <div>
       <PageHeader
-        title="Unidades"
-        subtitle="Casas y departamentos del condominio. Bloquear una unidad impide apertura remota, pases QR y citofonía."
-        actions={<button className="btn-primary" onClick={() => setEditing('new')}>+ Nueva unidad</button>}
+        title={labels.unitsTitle}
+        subtitle={`Viviendas y blocks ${labels.ofCommunity}. Heredan automáticamente la dirección y GPS del recinto.`}
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <button className="btn-primary" onClick={() => setCreatingBatch(true)}>
+              + Nuevo Block / Pasaje
+            </button>
+            <button className="btn-secondary" onClick={() => setEditing('new')}>
+              {labels.newUnitBtn}
+            </button>
+          </div>
+        }
       />
 
       <div className="card mb-4 flex flex-wrap items-center gap-3 p-4">
-        <input className="input max-w-xs" placeholder="Buscar unidad, torre o residente…" value={search}
+        <input className="input max-w-xs" placeholder={`Buscar ${labels.unitSingularLower}, block o ${labels.residentSingularLower}…`} value={search}
           onChange={(e) => setSearch(e.target.value)} />
+        <select className="input !w-auto" value={blockFilter} onChange={(e) => setBlockFilter(e.target.value)}>
+          <option value="">Todos los blocks / pasajes</option>
+          {blockOptions.map((b) => <option key={b} value={b}>{b}</option>)}
+          <option value="__NONE__">Sin block asignado</option>
+        </select>
         <select className="input !w-auto" value={filter} onChange={(e) => setFilter(e.target.value as StatusFilter)}>
           <option value="all">Todas</option>
           <option value="blocked">Bloqueadas</option>
@@ -104,28 +137,30 @@ export default function UnitsPage() {
       <div className="card overflow-x-auto">
         {units.isLoading && <Spinner />}
         {units.error && <ErrorBox error={units.error} />}
-        {units.data && rows.length === 0 && <EmptyState>No hay unidades que coincidan.</EmptyState>}
+        {units.data && rows.length === 0 && <EmptyState>No hay {labels.unitsTitle.toLowerCase()} que coincidan.</EmptyState>}
         {rows.length > 0 && (
           <table className="min-w-full divide-y divide-slate-200">
             <thead className="bg-slate-50">
               <tr>
-                <th className="th">Unidad</th>
-                <th className="th">Torre / Bloque</th>
+                <th className="th">Block / Pasaje</th>
+                <th className="th">{labels.unitSingular}</th>
                 <th className="th">Piso</th>
                 <th className="th">Ext. citofonía</th>
-                <th className="th">Residentes</th>
+                <th className="th">{labels.residentsNav}</th>
                 <th className="th">Estado</th>
                 <th className="th text-right">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {rows.map((u) => (
+              {rows.map((u) => {
+                const block = (u.blockName ?? u.towerOrBlock ?? '').trim();
+                return (
                 <tr key={u.id} className={u.blocked ? 'bg-red-50/50' : ''}>
+                  <td className="td">{block ? <Badge tone="slate">{block}</Badge> : <span className="text-slate-400">—</span>}</td>
                   <td className="td font-semibold">{u.unitNumber}</td>
-                  <td className="td">{u.towerOrBlock ?? '—'}</td>
                   <td className="td">{u.floor ?? '—'}</td>
                   <td className="td">{u.intercomExtension ?? '—'}</td>
-                  <td className="td">{(residentsByUnit.get(u.id) ?? []).join(', ') || <span className="text-slate-400">Sin residentes</span>}</td>
+                  <td className="td">{(residentsByUnit.get(u.id) ?? []).join(', ') || <span className="text-slate-400">Sin {labels.residentsNav.toLowerCase()}</span>}</td>
                   <td className="td">
                     <div className="flex flex-wrap gap-1">
                       {!u.active && <Badge tone="slate">Baja</Badge>}
@@ -161,11 +196,22 @@ export default function UnitsPage() {
                     </div>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         )}
       </div>
+
+      {creatingBatch && (
+        <BatchBlockModal
+          onClose={() => setCreatingBatch(false)}
+          onCreated={() => {
+            setCreatingBatch(false);
+            refresh();
+          }}
+        />
+      )}
 
       {editing && (
         <UnitFormModal
@@ -173,7 +219,7 @@ export default function UnitsPage() {
           onClose={() => setEditing(null)}
           onSaved={() => {
             setEditing(null);
-            void refresh();
+            refresh();
           }}
         />
       )}
@@ -209,6 +255,7 @@ export default function UnitsPage() {
           onCompleted={() => {
             setTurnoverUnit(null);
             void queryClient.invalidateQueries({ queryKey: ['users', condoId] });
+            void queryClient.invalidateQueries({ queryKey: ['users-summary', condoId] });
             void refresh();
           }}
         />
@@ -219,9 +266,10 @@ export default function UnitsPage() {
 
 function UnitFormModal({ unit, onClose, onSaved }: { unit: Unit | null; onClose: () => void; onSaved: () => void }) {
   const { condoId } = useTenant();
+  const labels = useCommunityLabels();
   const toast = useToast();
   const [unitNumber, setUnitNumber] = useState(unit?.unitNumber ?? '');
-  const [tower, setTower] = useState(unit?.towerOrBlock ?? '');
+  const [blockName, setBlockName] = useState(unit?.blockName ?? unit?.towerOrBlock ?? '');
   const [floor, setFloor] = useState(unit?.floor ?? '');
   const [ext, setExt] = useState(unit?.intercomExtension ?? '');
 
@@ -230,18 +278,20 @@ function UnitFormModal({ unit, onClose, onSaved }: { unit: Unit | null; onClose:
       unit
         ? unitApi.update(condoId, unit.id, {
             unitNumber: unitNumber.trim(),
-            towerOrBlock: tower.trim(),
+            blockName: blockName.trim(),
+            towerOrBlock: blockName.trim(),
             floor: floor.trim(),
             intercomExtension: ext.trim(),
           })
         : unitApi.create(condoId, {
             unitNumber: unitNumber.trim(),
-            towerOrBlock: tower.trim() || undefined,
+            blockName: blockName.trim() || undefined,
+            towerOrBlock: blockName.trim() || undefined,
             floor: floor.trim() || undefined,
             intercomExtension: ext.trim() || undefined,
           }),
     onSuccess: () => {
-      toast.push('success', unit ? 'Unidad actualizada' : 'Unidad creada');
+      toast.push('success', unit ? `${labels.unitSingular} actualizada` : `${labels.unitSingular} creada`);
       onSaved();
     },
     onError: (e) => toast.push('error', errMsg(e)),
@@ -254,7 +304,7 @@ function UnitFormModal({ unit, onClose, onSaved }: { unit: Unit | null; onClose:
 
   return (
     <Modal
-      title={unit ? `Editar unidad ${unit.unitNumber}` : 'Nueva unidad'}
+      title={unit ? `Editar ${formatUnitLabel(unit)}` : labels.newUnitBtn.replace(/^\+\s*/, '')}
       onClose={onClose}
       footer={
         <>
@@ -266,19 +316,111 @@ function UnitFormModal({ unit, onClose, onSaved }: { unit: Unit | null; onClose:
       }
     >
       <form id="unit-form" onSubmit={submit} className="space-y-4">
-        <Field label="Número / nombre de la unidad">
-          <input className="input" value={unitNumber} onChange={(e) => setUnitNumber(e.target.value)} maxLength={32} required autoFocus />
+        <Field label="Block / Pasaje (opcional)" hint="ej. Block B, Torre 1, Pasaje Los Aromos">
+          <input className="input" value={blockName} onChange={(e) => setBlockName(e.target.value)} maxLength={64} />
         </Field>
         <div className="grid grid-cols-2 gap-4">
-          <Field label="Torre / bloque">
-            <input className="input" value={tower} onChange={(e) => setTower(e.target.value)} maxLength={64} />
+          <Field label={`Número de ${labels.unitSingularLower}`}>
+            <input className="input" value={unitNumber} onChange={(e) => setUnitNumber(e.target.value)} maxLength={32} required autoFocus />
           </Field>
-          <Field label="Piso">
+          <Field label="Piso (opcional)">
             <input className="input" value={floor} onChange={(e) => setFloor(e.target.value)} maxLength={16} />
           </Field>
         </div>
-        <Field label="Extensión de citofonía" hint="Única por condominio. Los paneles de puerta llaman a esta extensión.">
+        <Field label="Extensión de citofonía (opcional)" hint={`Única ${labels.ofCommunity}. Los paneles de puerta llaman a esta extensión.`}>
           <input className="input" value={ext} onChange={(e) => setExt(e.target.value)} maxLength={32} />
+        </Field>
+      </form>
+    </Modal>
+  );
+}
+
+function BatchBlockModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+  const { condoId, condo } = useTenant();
+  const labels = useCommunityLabels();
+  const toast = useToast();
+  const [blockName, setBlockName] = useState('');
+  const [rawNumbers, setRawNumbers] = useState('');
+
+  const parsedNumbers = useMemo(() => {
+    const seen = new Set<string>();
+    const list: string[] = [];
+    for (const part of rawNumbers.split(/[\s,;]+/)) {
+      const cleaned = part.trim();
+      if (cleaned && !seen.has(cleaned.toLowerCase())) {
+        seen.add(cleaned.toLowerCase());
+        list.push(cleaned);
+      }
+    }
+    return list;
+  }, [rawNumbers]);
+
+  const createBatch = useMutation({
+    mutationFn: () => unitApi.createBatch(condoId, { blockName: blockName.trim(), unitNumbers: parsedNumbers }),
+    onSuccess: (res) => {
+      toast.push('success', `${res.blockName}: ${res.createdCount} vivienda(s) creadas`);
+      onCreated();
+    },
+    onError: (e) => toast.push('error', errMsg(e)),
+  });
+
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    if (!blockName.trim()) {
+      toast.push('error', 'Ingresa el nombre del Block / Pasaje');
+      return;
+    }
+    if (parsedNumbers.length === 0) {
+      toast.push('error', 'Ingresa al menos un número de departamento o casa');
+      return;
+    }
+    createBatch.mutate();
+  };
+
+  return (
+    <Modal
+      title="Nuevo Block / Pasaje"
+      onClose={onClose}
+      footer={
+        <>
+          <button className="btn-secondary" onClick={onClose}>Cancelar</button>
+          <button
+            className="btn-primary"
+            form="batch-block-form"
+            disabled={createBatch.isPending || parsedNumbers.length === 0 || !blockName.trim()}
+          >
+            {createBatch.isPending ? 'Creando…' : `Crear ${parsedNumbers.length || ''} ${labels.unitsTitle.toLowerCase()}`}
+          </button>
+        </>
+      }
+    >
+      <form id="batch-block-form" onSubmit={submit} className="space-y-4">
+        <p className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
+          Solo necesitas el nombre del Block y los números de vivienda: la dirección
+          {condo?.address ? ` (${condo.address})` : ''} y ubicación GPS del recinto aplican automáticamente.
+        </p>
+        <Field label="Nombre del Block / Pasaje">
+          <input
+            className="input"
+            value={blockName}
+            onChange={(e) => setBlockName(e.target.value)}
+            placeholder="ej. Block C"
+            maxLength={64}
+            required
+            autoFocus
+          />
+        </Field>
+        <Field
+          label="Números de departamentos / casas"
+          hint={`Separados por coma, espacio o salto de línea (${parsedNumbers.length} detectados).`}
+        >
+          <textarea
+            className="input min-h-[110px]"
+            value={rawNumbers}
+            onChange={(e) => setRawNumbers(e.target.value)}
+            placeholder="ej. 101, 102, 201, 202, 301, 302"
+            required
+          />
         </Field>
       </form>
     </Modal>
@@ -295,6 +437,7 @@ function FamilyCodeModal({
   onClose: () => void;
 }) {
   const { condoId } = useTenant();
+  const labels = useCommunityLabels();
   const toast = useToast();
   const [maxUses, setMaxUses] = useState(4);
   const [expiresInHours, setExpiresInHours] = useState(48);
@@ -318,12 +461,12 @@ function FamilyCodeModal({
     if (!generated) return;
     const serverOrigin = window.location.origin;
     const message = [
-      `¡Hola! Bienvenidos a *${condoName}* (Unidad *${unit.unitNumber}*).`,
+      `¡Hola! Bienvenidos a *${condoName}* (${labels.unitSingular} *${formatUnitLabel(unit)}*).`,
       '',
       'Para activar el acceso autónomo en tu teléfono:',
       '1. Abre la app *AccesoLibre* en Android.',
       `2. En servidor local ingresa: ${serverOrigin}`,
-      '3. Toca *"Activar departamento con código"* y completa tus datos.',
+      `3. Toca *"${labels.activateAppBtnText}"* y completa tus datos.`,
       '',
       `🔑 Código familiar: *${generated.code}*`,
       `👥 Cupos disponibles: ${generated.maxUses} integrantes`,

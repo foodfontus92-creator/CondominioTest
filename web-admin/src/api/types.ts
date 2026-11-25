@@ -1,12 +1,17 @@
 export type UserRole = 'SUPER_ADMIN' | 'CONDO_ADMIN' | 'RESIDENT';
 
+export type CommunityType = 'CONDOMINIUM' | 'POBLACION' | 'VILLA' | 'PASAJE';
+
 export interface UserProfile {
   id: string;
   condominiumId: string;
   unitId: string | null;
+  unitNumber?: string | null;
+  blockName?: string | null;
   email: string;
   fullName: string;
   role: UserRole;
+  communityType?: CommunityType;
 }
 
 export interface AuthResponse {
@@ -15,6 +20,7 @@ export interface AuthResponse {
   accessTokenExpiresInSeconds: number;
   refreshToken: string;
   refreshTokenExpiresInSeconds: number;
+  communityType?: CommunityType;
   user: UserProfile;
 }
 
@@ -22,6 +28,7 @@ export interface Condominium {
   id: string;
   code: string;
   name: string;
+  communityType: CommunityType;
   address: string | null;
   timezone: string;
   hmacKeyVersion: number;
@@ -36,6 +43,7 @@ export interface Condominium {
 export interface CreateCondominiumBody {
   code: string;
   name: string;
+  communityType?: CommunityType;
   address?: string;
   timezone?: string;
   latitude?: number;
@@ -45,6 +53,7 @@ export interface CreateCondominiumBody {
 
 export interface UpdateCondominiumBody {
   name?: string;
+  communityType?: CommunityType;
   address?: string;
   timezone?: string;
   latitude?: number;
@@ -57,6 +66,7 @@ export interface Unit {
   id: string;
   condominiumId: string;
   unitNumber: string;
+  blockName: string | null;
   towerOrBlock: string | null;
   floor: string | null;
   intercomExtension: string | null;
@@ -69,13 +79,26 @@ export interface Unit {
 
 export interface CreateUnitBody {
   unitNumber: string;
+  blockName?: string;
   towerOrBlock?: string;
   floor?: string;
   intercomExtension?: string;
 }
 
+export interface BatchCreateUnitsBody {
+  blockName: string;
+  unitNumbers: string[];
+}
+
+export interface BatchCreateUnitsResponse {
+  blockName: string;
+  createdCount: number;
+  units: Unit[];
+}
+
 export interface UpdateUnitBody {
   unitNumber?: string;
+  blockName?: string;
   towerOrBlock?: string;
   floor?: string;
   intercomExtension?: string;
@@ -233,15 +256,30 @@ export interface DeviceLiveEvent {
   payload: Record<string, unknown>;
 }
 
+export interface ResidentsSummary {
+  totalResidents: number;
+  activeResidents: number;
+  blockedResidents: number;
+  inactiveResidents: number;
+  blockedOrInactiveResidents: number;
+  occupiedUnits: number;
+  totalUnits: number;
+}
+
 export interface SetupStatusResponse {
   initialized: boolean;
+  defaultCommunityType?: CommunityType;
 }
 
 export interface SetupInitializeBody {
   condoCode: string;
   condoName: string;
+  communityType?: CommunityType;
   address?: string;
   timezone?: string;
+  latitude?: number;
+  longitude?: number;
+  geofenceRadiusMeters?: number;
   adminFullName: string;
   adminEmail: string;
   adminPassword: string;
@@ -252,6 +290,7 @@ export interface SetupInitializeResponse {
   condominiumId: string;
   condoCode: string;
   condoName: string;
+  communityType: CommunityType;
   adminUserId: string;
   adminEmail: string;
 }

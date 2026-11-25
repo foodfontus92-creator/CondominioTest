@@ -7,6 +7,9 @@ public record UpdateUnitRequest(
         String unitNumber,
 
         @Size(max = 64)
+        String blockName,
+
+        @Size(max = 64)
         String towerOrBlock,
 
         @Size(max = 16)

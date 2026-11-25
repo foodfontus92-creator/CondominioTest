@@ -8,6 +8,7 @@ public record UnitSecretResponse(
         UUID unitId,
         String unitIdB64,
         String unitNumber,
+        String blockName,
         String unitSecret,
         Integer hmacKeyVersion,
         String qrFormat,

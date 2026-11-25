@@ -2,16 +2,8 @@ import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { useTenant, useDevices } from '../context/TenantContext';
 import { useLiveState } from '../live/LiveFeed';
+import { useCommunityLabels } from '../lib/communityLabels';
 import { hasGateAlert, roleLabel } from '../lib/format';
-
-const navItems = [
-  { to: '/', label: 'Resumen', icon: '📊', end: true },
-  { to: '/unidades', label: 'Unidades', icon: '🏠' },
-  { to: '/residentes', label: 'Residentes', icon: '👥' },
-  { to: '/dispositivos', label: 'Dispositivos', icon: '📡' },
-  { to: '/bitacora', label: 'Bitácora', icon: '📋' },
-  { to: '/condominios', label: 'Condominio', icon: '🏢' },
-];
 
 const liveStyle = {
   connected: { dot: 'bg-emerald-500', text: 'En vivo' },
@@ -22,9 +14,19 @@ const liveStyle = {
 export default function Layout() {
   const { user, logout } = useAuth();
   const { condoId, condo, condos, isSuperAdmin, setCondoId } = useTenant();
+  const labels = useCommunityLabels();
   const live = useLiveState();
   const devices = useDevices();
   const alerts = (devices.data ?? []).filter(hasGateAlert);
+
+  const navItems = [
+    { to: '/', label: 'Resumen', icon: '📊', end: true },
+    { to: '/unidades', label: labels.unitsNav, icon: '🏠' },
+    { to: '/residentes', label: labels.residentsNav, icon: '👥' },
+    { to: '/dispositivos', label: 'Dispositivos', icon: '📡' },
+    { to: '/bitacora', label: 'Bitácora', icon: '📋' },
+    { to: '/condominios', label: labels.communityName, icon: '🏢' },
+  ];
 
   return (
     <div className="flex min-h-screen">
@@ -96,8 +98,8 @@ export default function Layout() {
         )}
         {condo && (condo.latitude === null || condo.longitude === null) && (
           <div className="border-b border-amber-200 bg-amber-50 px-6 py-3 text-sm text-amber-800">
-            Este condominio no tiene coordenadas GPS configuradas: la apertura remota desde la app no funcionará.
-            Configúralas en <NavLink className="font-semibold underline" to="/condominios">Condominio</NavLink>.
+            {labels.gpsMissingSubject} no tiene coordenadas GPS configuradas: la apertura remota desde la app no funcionará.
+            Configúralas en <NavLink className="font-semibold underline" to="/condominios">{labels.communityName}</NavLink>.
           </div>
         )}
 

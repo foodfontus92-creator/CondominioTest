@@ -1,7 +1,10 @@
 package com.accesolibre.domain.entity;
 
+import com.accesolibre.domain.enums.CommunityType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -32,6 +35,10 @@ public class Condominium {
 
     @Column(name = "timezone", nullable = false, length = 64)
     private String timezone = "UTC";
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "community_type", nullable = false, length = 32)
+    private CommunityType communityType = CommunityType.CONDOMINIUM;
 
     @Column(name = "hmac_secret", nullable = false, length = 128)
     private String hmacSecret;
@@ -76,6 +83,9 @@ public class Condominium {
         if (this.active == null) {
             this.active = true;
         }
+        if (this.communityType == null) {
+            this.communityType = CommunityType.CONDOMINIUM;
+        }
     }
 
     @PreUpdate
@@ -97,6 +107,9 @@ public class Condominium {
 
     public String getTimezone() { return timezone; }
     public void setTimezone(String timezone) { this.timezone = timezone; }
+
+    public CommunityType getCommunityType() { return communityType; }
+    public void setCommunityType(CommunityType communityType) { this.communityType = communityType; }
 
     public String getHmacSecret() { return hmacSecret; }
     public void setHmacSecret(String hmacSecret) { this.hmacSecret = hmacSecret; }
