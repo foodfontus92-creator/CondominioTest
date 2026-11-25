@@ -3,7 +3,11 @@ package com.accesolibre.service;
 import com.accesolibre.domain.entity.Unit;
 import com.accesolibre.domain.entity.User;
 import com.accesolibre.domain.enums.UserRole;
+import com.accesolibre.dto.user.CreateUserRequest;
 import com.accesolibre.dto.user.ResidentsSummaryResponse;
+import com.accesolibre.dto.user.UpdateUserRequest;
+import com.accesolibre.dto.user.UserResponse;
+import com.accesolibre.exception.ForbiddenTenantException;
 import com.accesolibre.repository.CondominiumRepository;
 import com.accesolibre.repository.RefreshTokenRepository;
 import com.accesolibre.repository.UnitRepository;
@@ -18,10 +22,13 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 import java.lang.reflect.Proxy;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class UserServiceSummaryTest {
 
@@ -32,6 +39,8 @@ class UserServiceSummaryTest {
     private UserService userService;
     private List<User> allUsers;
     private List<Unit> allUnits;
+    private User superAdmin;
+    private User condoAdmin;
 
     @BeforeEach
     void setUp() {
@@ -63,19 +72,28 @@ class UserServiceSummaryTest {
         User active2 = resident("Luis", unitA, true, false); // shares unitA -> unitA counted once
         User blocked1 = resident("Mario", unitB, true, true);
         User inactive1 = resident("Sofia", unitC, false, false);
-        User admin = new User();
-        admin.setId(UUID.randomUUID());
-        admin.setCondominiumId(condoId);
-        admin.setRole(UserRole.CONDO_ADMIN);
-        admin.setActive(true);
-        admin.setBlocked(false);
 
-        allUsers = List.of(active1, active2, blocked1, inactive1, admin);
+        condoAdmin = new User();
+        condoAdmin.setId(UUID.randomUUID());
+        condoAdmin.setCondominiumId(condoId);
+        condoAdmin.setFullName("Admin Condominio");
+        condoAdmin.setEmail("admin@test.local");
+        condoAdmin.setRole(UserRole.CONDO_ADMIN);
+        condoAdmin.setActive(true);
+        condoAdmin.setBlocked(false);
 
-        AuthenticatedUser caller = new AuthenticatedUser(admin.getId(), condoId, null, "admin@test.local", UserRole.CONDO_ADMIN);
-        SecurityContextHolder.getContext().setAuthentication(
-                new UsernamePasswordAuthenticationToken(caller, null, caller.authorities())
-        );
+        superAdmin = new User();
+        superAdmin.setId(UUID.randomUUID());
+        superAdmin.setCondominiumId(condoId);
+        superAdmin.setFullName("Super Admin Principal");
+        superAdmin.setEmail("superadmin@test.local");
+        superAdmin.setRole(UserRole.SUPER_ADMIN);
+        superAdmin.setActive(true);
+        superAdmin.setBlocked(false);
+
+        allUsers = new ArrayList<>(List.of(active1, active2, blocked1, inactive1, condoAdmin, superAdmin));
+
+        setCaller(condoAdmin);
 
         UserRepository userRepo = (UserRepository) Proxy.newProxyInstance(
                 UserRepository.class.getClassLoader(),
@@ -84,6 +102,19 @@ class UserServiceSummaryTest {
                     case "findAllByCondominiumIdAndRoleOrderByFullNameAsc" -> allUsers.stream()
                             .filter(u -> u.getCondominiumId().equals(a[0]) && u.getRole() == a[1])
                             .toList();
+                    case "findByIdAndCondominiumId" -> allUsers.stream()
+                            .filter(u -> u.getId().equals(a[0]) && u.getCondominiumId().equals(a[1]))
+                            .findFirst();
+                    case "existsByCondominiumIdAndEmailIgnoreCase" -> allUsers.stream()
+                            .anyMatch(u -> u.getCondominiumId().equals(a[0])
+                                    && u.getEmail().equalsIgnoreCase((String) a[1]));
+                    case "save" -> {
+                        User u = (User) a[0];
+                        if (u.getId() == null) {
+                            u.setId(UUID.randomUUID());
+                        }
+                        yield u;
+                    }
                     default -> throw new UnsupportedOperationException("UserRepository." + m.getName());
                 }
         );
@@ -102,13 +133,19 @@ class UserServiceSummaryTest {
         CondominiumRepository condoRepo = (CondominiumRepository) Proxy.newProxyInstance(
                 CondominiumRepository.class.getClassLoader(),
                 new Class<?>[]{CondominiumRepository.class},
-                (p, m, a) -> { throw new UnsupportedOperationException("CondominiumRepository." + m.getName()); }
+                (p, m, a) -> switch (m.getName()) {
+                    case "existsById" -> condoId.equals(a[0]);
+                    default -> throw new UnsupportedOperationException("CondominiumRepository." + m.getName());
+                }
         );
 
         RefreshTokenRepository refreshRepo = (RefreshTokenRepository) Proxy.newProxyInstance(
                 RefreshTokenRepository.class.getClassLoader(),
                 new Class<?>[]{RefreshTokenRepository.class},
-                (p, m, a) -> { throw new UnsupportedOperationException("RefreshTokenRepository." + m.getName()); }
+                (p, m, a) -> switch (m.getName()) {
+                    case "revokeAllActiveByUser" -> 0;
+                    default -> throw new UnsupportedOperationException("RefreshTokenRepository." + m.getName());
+                }
         );
 
         userService = new UserService(userRepo, condoRepo, unitRepo, refreshRepo, new BCryptPasswordEncoder(4), new TenantAccessGuard());
@@ -130,6 +167,58 @@ class UserServiceSummaryTest {
         assertThat(summary.blockedOrInactiveResidents()).isEqualTo(2);
         assertThat(summary.occupiedUnits()).isEqualTo(1); // Only unitA has active non-blocked residents
         assertThat(summary.totalUnits()).isEqualTo(3);
+    }
+
+    @Test
+    void condoAdminCannotEditBlockDeactivateOrCreateSuperAdmin() {
+        setCaller(condoAdmin);
+
+        assertThatThrownBy(() -> userService.updateUser(
+                condoId,
+                superAdmin.getId(),
+                new UpdateUserRequest(null, "Nombre Alterado", null, null, null, null, null, null)
+        )).isInstanceOf(ForbiddenTenantException.class);
+
+        assertThatThrownBy(() -> userService.updateUser(
+                condoId,
+                superAdmin.getId(),
+                new UpdateUserRequest(null, null, null, null, null, true, "Bloqueo indebido", null)
+        )).isInstanceOf(ForbiddenTenantException.class);
+
+        assertThatThrownBy(() -> userService.updateUser(
+                condoId,
+                superAdmin.getId(),
+                new UpdateUserRequest(null, null, null, null, false, null, null, null)
+        )).isInstanceOf(ForbiddenTenantException.class);
+
+        assertThatThrownBy(() -> userService.createUser(
+                condoId,
+                new CreateUserRequest(null, "otro@test.local", "SuperSecret123", "Otro Super", null, UserRole.SUPER_ADMIN)
+        )).isInstanceOf(ForbiddenTenantException.class);
+
+        assertThat(superAdmin.getFullName()).isEqualTo("Super Admin Principal");
+        assertThat(superAdmin.getActive()).isTrue();
+        assertThat(superAdmin.getBlocked()).isFalse();
+    }
+
+    @Test
+    void superAdminCanUpdateSuperAdmin() {
+        setCaller(superAdmin);
+
+        UserResponse updated = userService.updateUser(
+                condoId,
+                superAdmin.getId(),
+                new UpdateUserRequest(null, "Super Admin Actualizado", null, null, null, null, null, null)
+        );
+        assertThat(updated.fullName()).isEqualTo("Super Admin Actualizado");
+    }
+
+    private void setCaller(User user) {
+        AuthenticatedUser caller = new AuthenticatedUser(
+                user.getId(), condoId, user.getUnitId(), user.getEmail(), user.getRole());
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(caller, null, caller.authorities())
+        );
     }
 
     private User resident(String name, UUID unitId, boolean active, boolean blocked) {

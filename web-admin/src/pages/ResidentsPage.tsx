@@ -164,6 +164,7 @@ export default function ResidentsPage() {
             <tbody className="divide-y divide-slate-100">
               {rows.map((u) => {
                 const isSelf = u.id === currentUser?.id;
+                const isProtectedSuperAdmin = u.role === 'SUPER_ADMIN' && currentUser?.role !== 'SUPER_ADMIN';
                 return (
                 <tr key={u.id} className={u.blocked ? 'bg-red-50/50' : ''}>
                   <td className="td font-semibold">
@@ -186,16 +187,22 @@ export default function ResidentsPage() {
                   </td>
                   <td className="td">
                     <div className="flex justify-end gap-2">
-                      {!isSelf && (
-                        <button className={u.blocked ? 'btn-secondary btn-sm' : 'btn-warn btn-sm'} disabled={update.isPending} onClick={() => toggleBlock(u)}>
-                          {u.blocked ? 'Desbloquear' : 'Bloquear'}
-                        </button>
-                      )}
-                      <button className="btn-secondary btn-sm" onClick={() => setEditing(u)}>Editar</button>
-                      {!isSelf && (
-                        <button className="btn-ghost btn-sm" disabled={update.isPending} onClick={() => toggleActive(u)}>
-                          {u.active ? 'Desactivar' : 'Reactivar'}
-                        </button>
+                      {isProtectedSuperAdmin ? (
+                        <span className="text-xs text-slate-400">Protegido</span>
+                      ) : (
+                        <>
+                          {!isSelf && (
+                            <button className={u.blocked ? 'btn-secondary btn-sm' : 'btn-warn btn-sm'} disabled={update.isPending} onClick={() => toggleBlock(u)}>
+                              {u.blocked ? 'Desbloquear' : 'Bloquear'}
+                            </button>
+                          )}
+                          <button className="btn-secondary btn-sm" onClick={() => setEditing(u)}>Editar</button>
+                          {!isSelf && (
+                            <button className="btn-ghost btn-sm" disabled={update.isPending} onClick={() => toggleActive(u)}>
+                              {u.active ? 'Desactivar' : 'Reactivar'}
+                            </button>
+                          )}
+                        </>
                       )}
                     </div>
                   </td>

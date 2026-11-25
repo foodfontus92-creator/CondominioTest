@@ -159,6 +159,12 @@ public class UserService {
         User user = userRepository.findByIdAndCondominiumId(userId, condoId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
 
+        if (user.getRole() == UserRole.SUPER_ADMIN && !caller.isSuperAdmin()) {
+            throw new ForbiddenTenantException(
+                    "Permisos insuficientes: un CONDO_ADMIN no puede editar, bloquear ni desactivar a un SUPER_ADMIN"
+            );
+        }
+
         if (request.role() != null) {
             if (request.role() == UserRole.SUPER_ADMIN && !caller.isSuperAdmin()) {
                 throw new ForbiddenTenantException("Only SUPER_ADMIN can assign SUPER_ADMIN role");
